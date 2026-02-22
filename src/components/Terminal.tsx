@@ -206,9 +206,11 @@ export default function Terminal() {
       window.goatcounter?.count({ path: 'nav-' + section })
 
       // Add user message
+      const userMsgId = nextId()
       const userMsg: ConversationItem = {
         kind: 'message',
-        data: { id: nextId(), type: 'user', content: label },
+        key: userMsgId,
+        data: { id: userMsgId, type: 'user', content: label },
       }
 
       // Remove all existing option / contact-btn rows, append user msg
