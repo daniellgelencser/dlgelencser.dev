@@ -94,14 +94,132 @@ type ContactBtnItem = { kind: 'contact-btn'; key: number }
 
 type ConversationItem = TypingItem | MessageItem | OptionsItem | ContactBtnItem
 
+// Simple serializable state for localStorage
+type SessionAction = 
+  | { type: 'welcome' }
+  | { type: 'select'; section: Section; label: string }
+
 function assertNever(x: never): never {
   throw new Error('Unexpected item kind: ' + (x as ConversationItem).kind)
+}
+
+const SESSION_KEY = 'terminal-session'
+
+// Helper functions for sessionStorage (persists only while tab is open)
+function saveSession(actions: SessionAction[]) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(actions))
+  } catch (e) {
+    console.error('Failed to save session:', e)
+  }
+}
+
+function loadSession(): SessionAction[] | null {
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY)
+    return saved ? JSON.parse(saved) : null
+  } catch (e) {
+    console.error('Failed to load session:', e)
+    return null
+  }
+}
+
+// Reconstruct conversation items from session actions
+function reconstructItems(actions: SessionAction[]): ConversationItem[] {
+  const items: ConversationItem[] = []
+  
+  actions.forEach((action) => {
+    if (action.type === 'welcome') {
+      items.push({
+        kind: 'message',
+        key: nextId(),
+        data: { id: nextId(), type: 'system', content: WELCOME_MESSAGE }
+      })
+      items.push({
+        kind: 'options',
+        options: MAIN_OPTIONS,
+        key: nextId()
+      })
+    } else if (action.type === 'select') {
+      // Remove existing options/contact buttons
+      const filtered = items.filter(i => i.kind !== 'options' && i.kind !== 'contact-btn')
+      items.length = 0
+      items.push(...filtered)
+      
+      // Add user message
+      items.push({
+        kind: 'message',
+        key: nextId(),
+        data: { id: nextId(), type: 'user', content: action.label }
+      })
+      
+      // Add system response
+      items.push({
+        kind: 'message',
+        key: nextId(),
+        data: { id: nextId(), type: 'system', content: getResponse(action.section) }
+      })
+      
+      // Add contact button if needed
+      if (action.section === 'contact') {
+        items.push({ kind: 'contact-btn', key: nextId() })
+      }
+      
+      // Add follow-up options
+      items.push({
+        kind: 'options',
+        options: FOLLOW_UP_OPTIONS,
+        key: nextId()
+      })
+    }
+  })
+  
+  return items
 }
 
 export default function Terminal() {
   const [items, setItems] = useState<ConversationItem[]>([])
   const [isTyping, setIsTyping] = useState(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [sessionActions, setSessionActions] = useState<SessionAction[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const skipTypingRef = useRef(false)
+  const currentTypingRef = useRef<{ text: string; onDone: (text: string) => void } | null>(null)
+
+  // Load session from sessionStorage on mount
+  useEffect(() => {
+    const actions = loadSession()
+    if (actions) {
+      setSessionActions(actions)
+      const reconstructed = reconstructItems(actions)
+      setItems(reconstructed)
+    }
+    setHasLoaded(true)
+  }, [])
+
+  // Save session to sessionStorage whenever actions change
+  useEffect(() => {
+    if (hasLoaded && sessionActions.length > 0) {
+      saveSession(sessionActions)
+    }
+  }, [sessionActions, hasLoaded])
+
+  // Skip typing animation on click or keypress
+  useEffect(() => {
+    const handleSkip = () => {
+      if (isTyping) {
+        skipTypingRef.current = true
+      }
+    }
+
+    window.addEventListener('click', handleSkip)
+    window.addEventListener('keydown', handleSkip)
+
+    return () => {
+      window.removeEventListener('click', handleSkip)
+      window.removeEventListener('keydown', handleSkip)
+    }
+  }, [isTyping])
 
   // Scroll to bottom whenever items change
   useEffect(() => {
@@ -112,7 +230,10 @@ export default function Terminal() {
   const typeMessage = useCallback(
     (text: string, onDone: (fullText: string) => void) => {
       setIsTyping(true)
+      skipTypingRef.current = false
       const typingKey = nextId()
+      
+      currentTypingRef.current = { text, onDone }
 
       setItems((prev) => [
         ...prev,
@@ -121,6 +242,21 @@ export default function Terminal() {
 
       let idx = 0
       const tick = () => {
+        // Check if skip was triggered
+        if (skipTypingRef.current) {
+          setItems((prev) =>
+            prev.map((item) =>
+              item.kind === 'typing' && item.key === typingKey
+                ? { ...item, displayed: text }
+                : item,
+            ),
+          )
+          setIsTyping(false)
+          currentTypingRef.current = null
+          onDone(text)
+          return
+        }
+        
         idx++
         setItems((prev) =>
           prev.map((item) =>
@@ -133,6 +269,7 @@ export default function Terminal() {
           setTimeout(tick, 30)
         } else {
           setIsTyping(false)
+          currentTypingRef.current = null
           onDone(text)
         }
       }
@@ -190,13 +327,21 @@ export default function Terminal() {
     [],
   )
 
-  // Boot: type welcome message
+  // Boot: type welcome message only if no saved session
   useEffect(() => {
+    if (!hasLoaded) return
+    
+    // If items already exist from localStorage, don't show welcome
+    if (items.length > 0) return
+
     const t = setTimeout(() => {
-      typeMessage(WELCOME_MESSAGE, (full) => finalizeTyping(full, null))
+      typeMessage(WELCOME_MESSAGE, (full) => {
+        finalizeTyping(full, null)
+        setSessionActions([{ type: 'welcome' }])
+      })
     }, 400)
     return () => clearTimeout(t)
-  }, [typeMessage, finalizeTyping])
+  }, [hasLoaded, items.length, typeMessage, finalizeTyping])
 
   const handleSelect = useCallback(
     (section: Section, label: string) => {
@@ -228,7 +373,10 @@ export default function Terminal() {
       }
 
       setTimeout(() => {
-        typeMessage(typingTexts[section], () => finalizeTyping('', section))
+        typeMessage(typingTexts[section], () => {
+          finalizeTyping('', section)
+          setSessionActions((prev) => [...prev, { type: 'select', section, label }])
+        })
       }, 200)
     },
     [isTyping, typeMessage, finalizeTyping],
@@ -245,7 +393,7 @@ export default function Terminal() {
         <span className="terminal__dot terminal__dot--red" />
         <span className="terminal__dot terminal__dot--yellow" />
         <span className="terminal__dot terminal__dot--green" />
-        <span className="terminal__title">daniel@gelencser.dev ~ </span>
+        <span className="terminal__title">dlgelencser.dev ~ </span>
       </div>
 
       <div className="terminal__body">
