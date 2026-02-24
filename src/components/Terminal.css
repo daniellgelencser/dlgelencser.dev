@@ -9,7 +9,9 @@
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  min-height: calc(100vh - 80px);
+  /* Fixed terminal height so the terminal itself is the scrolling container */
+  height: calc(100vh - 80px);
+  max-height: calc(100vh - 80px);
 }
 
 /* ── Header bar ─────────────────────────────────────────── */
@@ -40,11 +42,149 @@
   font-family: 'Courier New', Courier, monospace;
 }
 
+/* Header controls (right-aligned) */
+
+.terminal__controls {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.terminal__control {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.03);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  background: #2f3336; /* GNOME-dark neutral */
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+/* Subtle hover for all controls */
+.terminal__control:hover {
+  background: #3a3f41;
+  transform: translateY(-1px);
+}
+
+/* Slightly stronger hover for close to indicate destructive */
+.terminal__control--close:hover {
+  background: linear-gradient(180deg, rgba(255,0,0,0.06), rgba(255,0,0,0.02)), #3a3f41;
+}
+
+/* Icon inside the colored circle */
+.control__icon {
+  font-size: 13px;
+  line-height: 1;
+  display: inline-block;
+  transform: translateY(-1px);
+  color: #e6e6e6; /* light icon for GNOME dark */
+}
+
+/* Maximized terminal */
+.terminal--maximized {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
+  border-radius: 0;
+  z-index: 9999;
+}
+
+/* Closed terminal toggle (centered) */
+.terminal-toggle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+}
+
+.terminal-open-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 110px;
+  padding: 18px 10px;
+  border-radius: 10px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  position: relative;
+}
+
+.terminal-open-btn:focus {
+  outline: 2px solid rgba(88,166,255,0.12);
+  outline-offset: 6px;
+}
+
+.terminal-open-inner {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: #161b22; /* inner panel */
+  border: 1px solid #30363d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 6px 18px rgba(0,0,0,0.5);
+  z-index: 2;
+}
+
+.terminal-open-inner svg { display: block; }
+
+/* Slight downward nudge to perfectly center the glyph visually */
+.terminal-open-inner svg { transform: translateY(3px); }
+
+.terminal-open-label {
+  font-size: 0.86rem;
+  color: #8b949e;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  user-select: none;
+  z-index: 2;
+}
+
+/* Hover/focus rectangle behind the icon to signal clickability */
+.terminal-open-btn::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%) scale(0.92);
+  width: 120px;
+  height: 120px;
+  border-radius: 18px;
+  background: #2f3135; /* slightly lighter dark rounded rectangle */
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.terminal-open-btn:hover::before,
+.terminal-open-btn:focus::before,
+.terminal-open-btn:focus-visible::before {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
 /* ── Body ────────────────────────────────────────────────── */
 .terminal__body {
   flex: 1;
   padding: 24px 28px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
 }
@@ -111,7 +251,9 @@
     border-radius: 0;
     border-left: none;
     border-right: none;
-    min-height: 100vh;
+    /* Fill viewport on mobile while keeping internal scrolling */
+    height: 100vh;
+    max-height: 100vh;
   }
 
   .terminal__body {

@@ -17,6 +17,12 @@ body {
   align-items: flex-start;
 }
 
+/* Prevent the page from scrolling; terminal is the scrolling container */
+body, html, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
 #root {
   width: 100%;
   min-height: 100vh;

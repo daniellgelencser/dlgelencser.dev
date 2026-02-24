@@ -105,6 +105,27 @@ function assertNever(x: never): never {
 
 const SESSION_KEY = 'terminal-session'
 
+// Persist window state (open / maximized) separately in sessionStorage
+const SESSION_WINDOW_KEY = 'terminal-window'
+
+function saveWindowState(state: { isOpen: boolean; isMaximized: boolean }) {
+  try {
+    sessionStorage.setItem(SESSION_WINDOW_KEY, JSON.stringify(state))
+  } catch (e) {
+    console.error('Failed to save window state:', e)
+  }
+}
+
+function loadWindowState(): { isOpen: boolean; isMaximized: boolean } | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_WINDOW_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch (e) {
+    console.error('Failed to load window state:', e)
+    return null
+  }
+}
+
 // Helper functions for sessionStorage (persists only while tab is open)
 function saveSession(actions: SessionAction[]) {
   try {
@@ -183,17 +204,27 @@ export default function Terminal() {
   const [hasLoaded, setHasLoaded] = useState(false)
   const [sessionActions, setSessionActions] = useState<SessionAction[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const reconstructedRef = useRef<ConversationItem[] | null>(null)
+  const [isOpen, setIsOpen] = useState(true)
+  const [isMaximized, setIsMaximized] = useState(false)
   const skipTypingRef = useRef(false)
   const currentTypingRef = useRef<{ text: string; onDone: (text: string) => void } | null>(null)
 
-  // Load session from sessionStorage on mount
+  // Load session from sessionStorage on mount (store reconstructed items in a ref)
   useEffect(() => {
     const actions = loadSession()
     if (actions) {
       setSessionActions(actions)
-      const reconstructed = reconstructItems(actions)
-      setItems(reconstructed)
+      reconstructedRef.current = reconstructItems(actions)
     }
+
+    // Load saved window state (open / maximized) if present
+    const win = loadWindowState()
+    if (win) {
+      setIsOpen(Boolean(win.isOpen))
+      setIsMaximized(Boolean(win.isMaximized))
+    }
+
     setHasLoaded(true)
   }, [])
 
@@ -203,6 +234,12 @@ export default function Terminal() {
       saveSession(sessionActions)
     }
   }, [sessionActions, hasLoaded])
+
+  // Persist window open/maximized state whenever it changes (after initial load)
+  useEffect(() => {
+    if (!hasLoaded) return
+    saveWindowState({ isOpen, isMaximized })
+  }, [isOpen, isMaximized, hasLoaded])
 
   // Skip typing animation on click or keypress
   useEffect(() => {
@@ -327,13 +364,26 @@ export default function Terminal() {
     [],
   )
 
-  // Boot: type welcome message only if no saved session
+  // Boot: if a saved session exists, show a quick restoring sequence, otherwise show welcome
   useEffect(() => {
     if (!hasLoaded) return
-    
-    // If items already exist from localStorage, don't show welcome
+
+    // If items already exist, nothing to do
     if (items.length > 0) return
 
+    // If we have a saved session, show a short 'Restoring session...' typing animation
+    if (sessionActions.length > 0 && reconstructedRef.current) {
+      const t = setTimeout(() => {
+        // ensure the typing message appears by itself
+        setItems([])
+        typeMessage('Restoring session...', () => {
+          setItems(reconstructedRef.current || [])
+        })
+      }, 150)
+      return () => clearTimeout(t)
+    }
+
+    // No saved session — show the normal welcome message
     const t = setTimeout(() => {
       typeMessage(WELCOME_MESSAGE, (full) => {
         finalizeTyping(full, null)
@@ -341,7 +391,20 @@ export default function Terminal() {
       })
     }, 400)
     return () => clearTimeout(t)
-  }, [hasLoaded, items.length, typeMessage, finalizeTyping])
+  }, [hasLoaded, items.length, sessionActions.length, typeMessage, finalizeTyping])
+
+  // When reopening the terminal (from closed state), show restoring animation then restore
+  useEffect(() => {
+    if (!hasLoaded) return
+    if (isOpen && reconstructedRef.current) {
+      // clear visible items so the restoring typing appears alone
+      setItems([])
+      // show restoring typing, then apply reconstructed items
+      typeMessage('Restoring session...', () => {
+        setItems(reconstructedRef.current || [])
+      })
+    }
+  }, [isOpen, hasLoaded, typeMessage])
 
   const handleSelect = useCallback(
     (section: Section, label: string) => {
@@ -388,12 +451,72 @@ export default function Terminal() {
   }, [])
 
   return (
-    <div className="terminal">
+    <>
+      {!isOpen && (
+        <div className="terminal-toggle" aria-hidden={false}>
+          <button
+            className="terminal-open-btn"
+            aria-label="Open terminal"
+            onClick={() => setIsOpen(true)}
+          >
+            <span className="terminal-open-inner" aria-hidden>
+              <svg width="32" height="32" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" aria-hidden focusable="false">
+                <polyline points="4,8 12,14 4,20" fill="none" stroke="#58a6ff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="13" y1="20" x2="22" y2="20" stroke="#58a6ff" strokeWidth="2.6" strokeLinecap="round" />
+              </svg>
+            </span>
+            <span className="terminal-open-label">Console</span>
+          </button>
+        </div>
+      )}
+
+      {isOpen && (
+        <div className={`terminal ${isMaximized ? 'terminal--maximized' : ''}`}>
       <div className="terminal__header">
-        <span className="terminal__dot terminal__dot--red" />
-        <span className="terminal__dot terminal__dot--yellow" />
-        <span className="terminal__dot terminal__dot--green" />
         <span className="terminal__title">dlgelencser.dev ~ </span>
+        <div className="terminal__controls">
+          {isMaximized ? (
+            // When maximized: show Restore (left) and Close (right)
+            <>
+              <button
+                className="terminal__control terminal__control--max"
+                title="Restore"
+                onClick={() => setIsMaximized(false)}
+                aria-label="Restore"
+              >
+                <span className="control__icon">🗗</span>
+              </button>
+              <button
+                className="terminal__control terminal__control--close"
+                title="Close"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close"
+              >
+                <span className="control__icon">✕</span>
+              </button>
+            </>
+          ) : (
+            // When not maximized: show Maximize (left) and Close (right)
+            <>
+              <button
+                className="terminal__control terminal__control--max"
+                title="Maximize"
+                onClick={() => setIsMaximized(true)}
+                aria-label="Maximize"
+              >
+                <span className="control__icon">🗖</span>
+              </button>
+              <button
+                className="terminal__control terminal__control--close"
+                title="Close"
+                onClick={() => { setIsOpen(false); setItems([]) }}
+                aria-label="Close"
+              >
+                <span className="control__icon">✕</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="terminal__body">
@@ -414,18 +537,6 @@ export default function Terminal() {
             )
           }
 
-          if (item.kind === 'options') {
-            return (
-              <div key={item.key} className="section-label">
-                <span className="section-label__text">What would you like to know?</span>
-                <OptionButtons
-                  options={item.options}
-                  onSelect={handleSelect}
-                />
-              </div>
-            )
-          }
-
           if (item.kind === 'contact-btn') {
             return (
               <div key={item.key} className="contact-btn-wrap">
@@ -436,10 +547,13 @@ export default function Terminal() {
             )
           }
 
-          return assertNever(item)
+          return null
         })}
         <div ref={bottomRef} />
       </div>
-    </div>
+        </div>
+      )}
+    </>
   )
 }
+ 
