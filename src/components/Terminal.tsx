@@ -547,6 +547,14 @@ export default function Terminal() {
             )
           }
 
+          if (item.kind === 'options') {
+            return (
+              <div key={item.key} className="options-wrap">
+                <OptionButtons options={item.options} onSelect={handleSelect} />
+              </div>
+            )
+          }
+
           return null
         })}
         <div ref={bottomRef} />
