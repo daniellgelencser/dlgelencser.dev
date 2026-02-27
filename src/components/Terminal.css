@@ -115,7 +115,7 @@
   align-items: center;
   gap: 10px;
   width: 110px;
-  padding: 18px 10px;
+  padding: 24px 10px;
   border-radius: 10px;
   background: transparent;
   border: 0;
@@ -123,10 +123,6 @@
   position: relative;
 }
 
-.terminal-open-btn:focus {
-  outline: 2px solid rgba(88,166,255,0.12);
-  outline-offset: 6px;
-}
 
 .terminal-open-inner {
   width: 56px;
