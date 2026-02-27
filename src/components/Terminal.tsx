@@ -18,6 +18,8 @@ const MAIN_OPTIONS = [
   { label: 'About Me', section: 'about' as Section },
   { label: 'Experience', section: 'experience' as Section },
   { label: 'Projects', section: 'projects' as Section },
+  { label: 'Stack', section: 'stack' as Section },
+  { label: 'Extracurricular', section: 'extracurricular' as Section },
   { label: 'Contact', section: 'contact' as Section },
 ]
 
@@ -82,6 +84,59 @@ function getResponse(section: Section): React.ReactNode {
   }
 }
 
+// Simple in-memory navigation tree describing folders and files.
+const NAV_TREE: Record<string, any> = {
+  root: [
+    { id: 'bio.txt', label: 'bio.txt', type: 'file', content: "Hello — I'm Daniel Gelencser. I'm a software engineer who builds web and cloud products. I enjoy systems design, developer experience, and mentoring teams." },
+    { id: 'experience', label: 'experience/', type: 'folder' },
+    { id: 'projects', label: 'projects/', type: 'folder' },
+    { id: 'stack', label: 'stack/', type: 'folder' },
+    { id: 'extracurricular', label: 'extracurricular/', type: 'folder' },
+    { id: 'contact.sh', label: 'contact.sh', type: 'exec' },
+  ],
+
+  experience: [
+    { id: 'TechCorp', label: 'TechCorp/', type: 'folder' },
+    { id: 'StartupX', label: 'StartupX/', type: 'folder' },
+    { id: 'DevHouse', label: 'DevHouse/', type: 'folder' },
+  ],
+
+  'experience/TechCorp': [
+    { id: 'summary.md', label: 'summary.md', type: 'file', content: 'Senior Software Engineer @ TechCorp (2022–Present) — Led backend migration to microservices on AWS.' },
+    { id: 'achievements.md', label: 'achievements.md', type: 'file', content: '- Migrated monolith to microservices\n- Reduced latency by 40%\n' },
+    { id: 'migration-case-study.md', label: 'migration-case-study.md', type: 'popup', popupId: 'migration' },
+  ],
+
+  projects: [
+    { id: 'OpenMetrics', label: 'OpenMetrics/', type: 'folder' },
+    { id: 'FlowKit', label: 'FlowKit/', type: 'folder' },
+    { id: 'Notifly', label: 'Notifly/', type: 'folder' },
+  ],
+
+  'projects/OpenMetrics': [
+    { id: 'readme.md', label: 'readme.md', type: 'file', content: 'OpenMetrics — a lightweight observability dashboard built with React and Go.' },
+    { id: 'architecture.png', label: 'architecture.png', type: 'popup', popupId: 'openmetrics-arch' },
+    { id: 'full-breakdown.md', label: 'full-breakdown.md', type: 'popup', popupId: 'openmetrics-full' },
+  ],
+
+  stack: [
+    { id: 'languages', label: 'languages/', type: 'folder' },
+    { id: 'infrastructure', label: 'infrastructure/', type: 'folder' },
+    { id: 'frontend', label: 'frontend/', type: 'folder' },
+  ],
+
+  extracurricular: [
+    { id: 'hobbies', label: 'hobbies/', type: 'folder' },
+    { id: 'philosophy.txt', label: 'philosophy.txt', type: 'file', content: 'I believe in clean code, gradual improvement, and mentoring teams.' },
+  ],
+
+  'extracurricular/hobbies': [
+    { id: 'photography.jpg', label: 'photography.jpg', type: 'popup', popupId: 'photos' },
+    { id: 'gaming.txt', label: 'gaming.txt', type: 'file', content: 'I enjoy indie game jams and tinkering with small game projects.' },
+  ],
+}
+
+
 let messageCounter = 0
 function nextId() {
   return ++messageCounter
@@ -89,15 +144,15 @@ function nextId() {
 
 type TypingItem    = { kind: 'typing'; key: number; text: string; displayed: string }
 type MessageItem   = { kind: 'message'; key: number; data: MessageData }
-type OptionsItem   = { kind: 'options'; key: number; options: typeof MAIN_OPTIONS }
+type OptionsItem   = { kind: 'options'; key: number; options: Array<{ label: string; section?: string }> }
 type ContactBtnItem = { kind: 'contact-btn'; key: number }
 
 type ConversationItem = TypingItem | MessageItem | OptionsItem | ContactBtnItem
 
 // Simple serializable state for localStorage
-type SessionAction = 
+type SessionAction =
   | { type: 'welcome' }
-  | { type: 'select'; section: Section; label: string }
+  | { type: 'select'; section?: string; label: string }
 
 function assertNever(x: never): never {
   throw new Error('Unexpected item kind: ' + (x as ConversationItem).kind)
@@ -178,7 +233,7 @@ function reconstructItems(actions: SessionAction[]): ConversationItem[] {
       items.push({
         kind: 'message',
         key: nextId(),
-        data: { id: nextId(), type: 'system', content: getResponse(action.section) }
+        data: { id: nextId(), type: 'system', content: getResponse(action.section ?? 'about') }
       })
       
       // Add contact button if needed
@@ -207,8 +262,46 @@ export default function Terminal() {
   const reconstructedRef = useRef<ConversationItem[] | null>(null)
   const [isOpen, setIsOpen] = useState(true)
   const [isMaximized, setIsMaximized] = useState(false)
+  const [navPath, setNavPath] = useState<string[]>(['~'])
+  const [lastOpenedFileId, setLastOpenedFileId] = useState<string | null>(null)
   const skipTypingRef = useRef(false)
   const currentTypingRef = useRef<{ text: string; onDone: (text: string) => void } | null>(null)
+
+  // Helper: build the current nav key from navPath
+  const currentNavKey = () => {
+    if (!navPath || navPath.length <= 1) return 'root'
+    return navPath.slice(1).join('/')
+  }
+
+  // Map symbolic MAIN_OPTIONS sections to NAV ids (files/folders)
+  const ROOT_MAP: Record<string, string> = {
+    about: 'bio.txt',
+    experience: 'experience',
+    projects: 'projects',
+    stack: 'stack',
+    extracurricular: 'extracurricular',
+    contact: 'contact.sh',
+  }
+
+  function getEntriesForCurrentPath() {
+    const key = currentNavKey()
+    return NAV_TREE[key] || []
+  }
+
+  function showEntriesAtCurrentPath() {
+    const key = currentNavKey()
+    if (key === 'root') {
+      // At root, show symbolic MAIN_OPTIONS so labels remain stable
+      setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
+      return
+    }
+    const entries = getEntriesForCurrentPath()
+    const options = entries
+      .filter((e: any) => e.id !== lastOpenedFileId)
+      .map((e: any) => ({ label: e.label, section: e.id }))
+    if (key !== 'root') options.unshift({ label: '.. Back', section: '__back' })
+    setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options, key: nextId() }])
+  }
 
   // Load session from sessionStorage on mount (store reconstructed items in a ref)
   useEffect(() => {
@@ -407,12 +500,129 @@ export default function Terminal() {
   }, [isOpen, hasLoaded, typeMessage])
 
   const handleSelect = useCallback(
-    (section: Section, label: string) => {
+    (section: string | undefined, label: string) => {
       if (isTyping) return
 
-      // Track with GoatCounter
-      window.goatcounter?.count({ path: 'nav-' + section })
+      // Track with GoatCounter (use label if section undefined)
+      window.goatcounter?.count({ path: 'nav-' + (section ?? label) })
 
+      // If we are navigating (or choosing from main menu), handle directory logic
+      const entriesAtRoot = NAV_TREE.root.map((e: any) => e.id)
+
+      // If the selected section corresponds to a folder in NAV_TREE, navigate into it
+      const targetKey = section ?? label
+
+      // Helper to append a user message before showing folder contents
+      const pushUserAndShow = (userText: string, cb: () => void) => {
+        const userMsgId = nextId()
+        const userMsg: ConversationItem = {
+          kind: 'message',
+          key: userMsgId,
+          data: { id: userMsgId, type: 'user', content: userText },
+        }
+        setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), userMsg])
+        setTimeout(cb, 200)
+      }
+
+      // If user clicked Back
+      if (section === '__back') {
+        setNavPath((p) => {
+          if (p.length <= 1) return p
+          const next = p.slice(0, p.length - 1)
+          const key = next.length <= 1 ? 'root' : next.slice(1).join('/')
+          const entries = NAV_TREE[key] || []
+          const options = entries
+            .filter((e: any) => e.id !== lastOpenedFileId)
+            .map((e: any) => ({ label: e.label, section: e.id }))
+          if (key === 'root') {
+            setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
+          } else {
+            if (key !== 'root') options.unshift({ label: '.. Back', section: '__back' })
+            setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options, key: nextId() }])
+          }
+          return next
+        })
+        return
+      }
+
+      // Resolve symbolic root mappings (About Me -> bio.txt, Contact -> contact.sh)
+      let resolvedTarget = targetKey
+      if (section && ROOT_MAP[section]) resolvedTarget = ROOT_MAP[section]
+
+      // If selecting a root folder (experience, projects, stack, extracurricular)
+      if (resolvedTarget && NAV_TREE[resolvedTarget]) {
+        // navigate into folder
+        const newKey = resolvedTarget
+        setLastOpenedFileId(null)
+        setNavPath((p) => [...p, newKey])
+        pushUserAndShow(label, () => {
+          const entries = NAV_TREE[newKey] || []
+          const options = entries
+            .filter((e: any) => e.id !== lastOpenedFileId)
+            .map((e: any) => ({ label: e.label, section: e.id }))
+          if (newKey !== 'root') options.unshift({ label: '.. Back', section: '__back' })
+          setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options, key: nextId() }])
+        })
+        return
+      }
+
+      // If selecting an entry inside a folder
+      const key = currentNavKey()
+      const entries = NAV_TREE[key] || []
+      const match = entries.find((e: any) => e.id === section || e.label === label)
+      if (match) {
+        if (match.type === 'folder') {
+          const newKey = key === 'root' ? match.id : key + '/' + match.id
+          setLastOpenedFileId(null)
+          setNavPath((p) => [...p, match.id])
+          pushUserAndShow(label, () => {
+            const entries2 = NAV_TREE[newKey] || []
+            const options2 = entries2
+              .filter((e: any) => e.id !== lastOpenedFileId)
+              .map((e: any) => ({ label: e.label, section: e.id }))
+            if (newKey !== 'root') options2.unshift({ label: '.. Back', section: '__back' })
+            setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options: options2, key: nextId() }])
+          })
+          return
+        }
+        if (match.type === 'file') {
+          // show file contents as a system message
+          const msgId = nextId()
+          // remember opened file to hide it from the options
+          setLastOpenedFileId(match.id)
+          const currentKey2 = key
+          const entriesForOptions = NAV_TREE[currentKey2] || []
+          const optionsAfterFile = entriesForOptions
+            .filter((e: any) => e.id !== match.id)
+            .map((e: any) => ({ label: e.label, section: e.id }))
+          if (currentKey2 !== 'root') optionsAfterFile.unshift({ label: '.. Back', section: '__back' })
+
+          setItems((prev) => [
+            ...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'),
+            { kind: 'message', key: msgId, data: { id: msgId, type: 'system', content: match.content } },
+            { kind: 'options', key: nextId(), options: optionsAfterFile },
+          ])
+          return
+        }
+        if (match.type === 'exec') {
+          // execute contact.sh -> open contact form
+          handleContactOpen()
+          return
+        }
+        if (match.type === 'popup') {
+          // simulate opening a popup
+          typeMessage('Opening ' + match.label + '...', () => {
+            const mid = nextId()
+            setItems((prev) => [
+              ...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'),
+              { kind: 'message', key: mid, data: { id: mid, type: 'system', content: `(Opened ${match.label})` } },
+            ])
+          })
+          return
+        }
+      }
+
+      // Fallback to original behavior for legacy labels (about/projects/experience/contact)
       // Add user message
       const userMsgId = nextId()
       const userMsg: ConversationItem = {
@@ -428,7 +638,7 @@ export default function Terminal() {
       ])
 
       // Determine typing text (a short preamble before showing the rich response)
-      const typingTexts: Record<Section, string> = {
+      const typingTexts: Record<string, string> = {
         about: 'Sure, here\'s a bit about me...',
         experience: 'Here\'s my work experience...',
         projects: 'Here are some projects I\'ve worked on...',
@@ -436,13 +646,14 @@ export default function Terminal() {
       }
 
       setTimeout(() => {
-        typeMessage(typingTexts[section], () => {
-          finalizeTyping('', section)
-          setSessionActions((prev) => [...prev, { type: 'select', section, label }])
+        const text = typingTexts[section ?? label] ?? typingTexts['about']
+        typeMessage(text, () => {
+          finalizeTyping('', section ?? (label as any))
+          setSessionActions((prev) => [...prev, { type: 'select', section: section ?? label, label }])
         })
       }, 200)
     },
-    [isTyping, typeMessage, finalizeTyping],
+    [isTyping, typeMessage, finalizeTyping, navPath],
   )
 
   const handleContactOpen = useCallback(() => {
@@ -473,7 +684,8 @@ export default function Terminal() {
       {isOpen && (
         <div className={`terminal ${isMaximized ? 'terminal--maximized' : ''}`}>
       <div className="terminal__header">
-        <span className="terminal__title">dlgelencser.dev ~ </span>
+        <span className="terminal__title">dlgelencser.dev</span>
+        <div className="terminal__breadcrumb">{navPath.join(' / ')}</div>
         <div className="terminal__controls">
           {isMaximized ? (
             // When maximized: show Restore (left) and Close (right)
