@@ -1,7 +1,16 @@
 .app {
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   background-color: #0d1117;
+}
+
+@media (max-width: 600px) {
+  .app {
+    min-height: 100dvh;
+    align-items: stretch;
+  }
 }

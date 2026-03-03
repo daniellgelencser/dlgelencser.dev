@@ -15,7 +15,7 @@
   background: transparent;
   border: 1px solid #58a6ff;
   color: #58a6ff;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--terminal-font-mono, 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
   font-size: 0.9rem;
   padding: 8px 18px;
   cursor: pointer;

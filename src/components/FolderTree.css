@@ -1,0 +1,70 @@
+.folder-tree {
+  font-family: var(--terminal-font-mono, 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+  font-size: 0.95rem;
+  color: #8b949e;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.tree-node {
+  margin: 0;
+}
+
+.tree-node__row {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  gap: 6px;
+}
+
+.tree-node__toggle {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #58a6ff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.15s ease-in-out;
+}
+
+.tree-node__toggle:hover {
+  color: #79c0ff;
+}
+
+.tree-node__toggle--placeholder {
+  cursor: default;
+  color: transparent;
+}
+
+.tree-node__label {
+  border: none;
+  background: none;
+  color: #8b949e;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  text-align: left;
+  transition: color 0.15s ease-in-out;
+}
+
+.tree-node__label:hover {
+  color: #58a6ff;
+  text-decoration: underline;
+}
+
+.tree-node__label--current {
+  color: #58a6ff;
+  font-weight: 400;
+}
+
+.tree-node__children {
+  margin: 0;
+}

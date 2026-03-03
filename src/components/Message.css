@@ -14,7 +14,7 @@
 
 .message__prefix {
   flex-shrink: 0;
-  margin-right: 4px;
+  margin-right: 1ch;
   opacity: 0.6;
 }
 

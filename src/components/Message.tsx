@@ -15,7 +15,7 @@ export default function Message({ message }: MessageProps) {
   return (
     <div className={`message message--${message.type}`}>
       <span className="message__prefix">
-        {message.type === 'system' ? '> ' : '$ '}
+        {message.type === 'system' ? '>_ ' : '$ '}
       </span>
       <span className="message__content">{message.content}</span>
     </div>

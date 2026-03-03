@@ -1,0 +1,76 @@
+.expandable-breadcrumb {
+  font-family: var(--terminal-font-mono, 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', monospace);
+  font-size: 0.95rem;
+  color: #8b949e;
+  margin: 12px 0;
+  padding: 8px 0;
+}
+
+.breadcrumb__header {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.breadcrumb__toggle {
+  width: 1ch;
+  height: auto;
+  padding: 0;
+  margin-right: 2ch;
+  border: none;
+  background: none;
+  color: #58a6ff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s ease-in-out;
+}
+
+.breadcrumb__toggle:hover {
+  color: #79c0ff;
+}
+
+.breadcrumb__path {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.breadcrumb__segment-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.breadcrumb__separator {
+  color: #8b949e;
+  margin: 0 4px;
+}
+
+.breadcrumb__segment {
+  border: none;
+  background: none;
+  color: #58a6ff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+  text-align: left;
+  transition: color 0.15s ease-in-out;
+}
+
+.breadcrumb__segment:hover {
+  color: #79c0ff;
+  text-decoration: underline;
+}
+
+.breadcrumb__segment--current {
+  color: #58a6ff;
+  font-weight: 400;
+}

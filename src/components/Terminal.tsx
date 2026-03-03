@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Message, { MessageData } from './Message'
 import OptionButtons, { Section } from './OptionButtons'
+import ExpandableBreadcrumb from './ExpandableBreadcrumb'
+import FolderTree from './FolderTree'
 import './Terminal.css'
 
 // Extend window for optional third-party globals
@@ -84,6 +86,24 @@ function getResponse(section: Section): React.ReactNode {
   }
 }
 
+// Folder welcome messages
+const FOLDER_MESSAGES: Record<string, string> = {
+  experience: "Here's my professional work experience. Select a company to learn more.",
+  'experience/TechCorp': 'TechCorp (2022–Present) — My current role as Senior Software Engineer.',
+  'experience/StartupX': 'StartupX (2020–2022) — Built mobile and backend systems.',
+  'experience/DevHouse': 'DevHouse (2018–2020) — Started my career building web applications.',
+  projects: "Here are some key projects I've worked on. Select one to see details.",
+  'projects/OpenMetrics': 'OpenMetrics — A lightweight observability dashboard.',
+  'projects/FlowKit': 'FlowKit — Drag-and-drop workflow automation tool.',
+  'projects/Notifly': 'Notifly — Push notification microservice handling 1M+ daily notifications.',
+  stack: 'My technical stack and tools. Explore by category.',
+  'stack/languages': 'Programming languages I work with.',
+  'stack/infrastructure': 'Cloud and infrastructure tools.',
+  'stack/frontend': 'Frontend frameworks and libraries.',
+  extracurricular: 'Beyond work — my interests and philosophy.',
+  'extracurricular/hobbies': 'Personal hobbies and creative pursuits.',
+}
+
 // Simple in-memory navigation tree describing folders and files.
 const NAV_TREE: Record<string, any> = {
   root: [
@@ -142,21 +162,11 @@ function nextId() {
   return ++messageCounter
 }
 
-type TypingItem    = { kind: 'typing'; key: number; text: string; displayed: string }
 type MessageItem   = { kind: 'message'; key: number; data: MessageData }
 type OptionsItem   = { kind: 'options'; key: number; options: Array<{ label: string; section?: string }> }
 type ContactBtnItem = { kind: 'contact-btn'; key: number }
 
-type ConversationItem = TypingItem | MessageItem | OptionsItem | ContactBtnItem
-
-// Simple serializable state for localStorage
-type SessionAction =
-  | { type: 'welcome' }
-  | { type: 'select'; section?: string; label: string }
-
-function assertNever(x: never): never {
-  throw new Error('Unexpected item kind: ' + (x as ConversationItem).kind)
-}
+type ConversationItem = MessageItem | OptionsItem | ContactBtnItem
 
 const SESSION_KEY = 'terminal-session'
 
@@ -182,15 +192,15 @@ function loadWindowState(): { isOpen: boolean; isMaximized: boolean } | null {
 }
 
 // Helper functions for sessionStorage (persists only while tab is open)
-function saveSession(actions: SessionAction[]) {
+function saveSession(navPath: string[]) {
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(actions))
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(navPath))
   } catch (e) {
     console.error('Failed to save session:', e)
   }
 }
 
-function loadSession(): SessionAction[] | null {
+function loadSession(): string[] | null {
   try {
     const saved = sessionStorage.getItem(SESSION_KEY)
     return saved ? JSON.parse(saved) : null
@@ -200,72 +210,22 @@ function loadSession(): SessionAction[] | null {
   }
 }
 
-// Reconstruct conversation items from session actions
-function reconstructItems(actions: SessionAction[]): ConversationItem[] {
-  const items: ConversationItem[] = []
-  
-  actions.forEach((action) => {
-    if (action.type === 'welcome') {
-      items.push({
-        kind: 'message',
-        key: nextId(),
-        data: { id: nextId(), type: 'system', content: WELCOME_MESSAGE }
-      })
-      items.push({
-        kind: 'options',
-        options: MAIN_OPTIONS,
-        key: nextId()
-      })
-    } else if (action.type === 'select') {
-      // Remove existing options/contact buttons
-      const filtered = items.filter(i => i.kind !== 'options' && i.kind !== 'contact-btn')
-      items.length = 0
-      items.push(...filtered)
-      
-      // Add user message
-      items.push({
-        kind: 'message',
-        key: nextId(),
-        data: { id: nextId(), type: 'user', content: action.label }
-      })
-      
-      // Add system response
-      items.push({
-        kind: 'message',
-        key: nextId(),
-        data: { id: nextId(), type: 'system', content: getResponse(action.section ?? 'about') }
-      })
-      
-      // Add contact button if needed
-      if (action.section === 'contact') {
-        items.push({ kind: 'contact-btn', key: nextId() })
-      }
-      
-      // Add follow-up options
-      items.push({
-        kind: 'options',
-        options: FOLLOW_UP_OPTIONS,
-        key: nextId()
-      })
-    }
-  })
-  
-  return items
-}
-
 export default function Terminal() {
   const [items, setItems] = useState<ConversationItem[]>([])
+  const [typingState, setTypingState] = useState<{ text: string; displayed: string } | null>(null)
   const [isTyping, setIsTyping] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
-  const [sessionActions, setSessionActions] = useState<SessionAction[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
-  const reconstructedRef = useRef<ConversationItem[] | null>(null)
+  const savedNavPathRef = useRef<string[] | null>(null)
+  const bootedRef = useRef(false)
   const [isOpen, setIsOpen] = useState(true)
   const [isMaximized, setIsMaximized] = useState(false)
   const [navPath, setNavPath] = useState<string[]>(['~'])
-  const [lastOpenedFileId, setLastOpenedFileId] = useState<string | null>(null)
+  const [isTreeExpanded, setIsTreeExpanded] = useState(false)
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
+  const [, setLastOpenedFileId] = useState<string | null>(null)
   const skipTypingRef = useRef(false)
-  const currentTypingRef = useRef<{ text: string; onDone: (text: string) => void } | null>(null)
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Helper: build the current nav key from navPath
   const currentNavKey = () => {
@@ -283,32 +243,11 @@ export default function Terminal() {
     contact: 'contact.sh',
   }
 
-  function getEntriesForCurrentPath() {
-    const key = currentNavKey()
-    return NAV_TREE[key] || []
-  }
-
-  function showEntriesAtCurrentPath() {
-    const key = currentNavKey()
-    if (key === 'root') {
-      // At root, show symbolic MAIN_OPTIONS so labels remain stable
-      setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
-      return
-    }
-    const entries = getEntriesForCurrentPath()
-    const options = entries
-      .filter((e: any) => e.id !== lastOpenedFileId)
-      .map((e: any) => ({ label: e.label, section: e.id }))
-    if (key !== 'root') options.unshift({ label: '.. Back', section: '__back' })
-    setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options, key: nextId() }])
-  }
-
-  // Load session from sessionStorage on mount (store reconstructed items in a ref)
+  // Load session from sessionStorage on mount
   useEffect(() => {
-    const actions = loadSession()
-    if (actions) {
-      setSessionActions(actions)
-      reconstructedRef.current = reconstructItems(actions)
+    const savedPath = loadSession()
+    if (savedPath) {
+      savedNavPathRef.current = savedPath
     }
 
     // Load saved window state (open / maximized) if present
@@ -321,12 +260,12 @@ export default function Terminal() {
     setHasLoaded(true)
   }, [])
 
-  // Save session to sessionStorage whenever actions change
+  // Save navPath to sessionStorage whenever it changes
   useEffect(() => {
-    if (hasLoaded && sessionActions.length > 0) {
-      saveSession(sessionActions)
+    if (hasLoaded) {
+      saveSession(navPath)
     }
-  }, [sessionActions, hasLoaded])
+  }, [navPath, hasLoaded])
 
   // Persist window open/maximized state whenever it changes (after initial load)
   useEffect(() => {
@@ -334,170 +273,145 @@ export default function Terminal() {
     saveWindowState({ isOpen, isMaximized })
   }, [isOpen, isMaximized, hasLoaded])
 
-  // Skip typing animation on click or keypress
+  // Skip typing animation on click or keypress — but only if typing was already
+  // in progress before this event (not one that just started on the same click)
   useEffect(() => {
     const handleSkip = () => {
       if (isTyping) {
         skipTypingRef.current = true
       }
     }
-
-    window.addEventListener('click', handleSkip)
-    window.addEventListener('keydown', handleSkip)
-
+    // Defer listener registration so a click that *starts* typing doesn't immediately skip it
+    const t = setTimeout(() => {
+      window.addEventListener('click', handleSkip)
+      window.addEventListener('keydown', handleSkip)
+    }, 0)
     return () => {
+      clearTimeout(t)
       window.removeEventListener('click', handleSkip)
       window.removeEventListener('keydown', handleSkip)
     }
   }, [isTyping])
 
-  // Scroll to bottom whenever items change
+  // Scroll to bottom whenever items or typing display changes
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [items])
+  }, [items, typingState])
 
-  // Type out a string character by character, then call onDone
+  // Type out a string character by character into typingState, then call onDone.
+  // clearItems=true wipes items before starting (for folder navigation).
   const typeMessage = useCallback(
-    (text: string, onDone: (fullText: string) => void) => {
-      setIsTyping(true)
+    (text: string, onDone: (fullText: string) => void, clearItems = false) => {
+      // Cancel any in-progress animation
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
       skipTypingRef.current = false
-      const typingKey = nextId()
-      
-      currentTypingRef.current = { text, onDone }
-
-      setItems((prev) => [
-        ...prev,
-        { kind: 'typing', key: typingKey, text, displayed: '' },
-      ])
+      setIsTyping(true)
+      if (clearItems) setItems([])
+      setTypingState({ text, displayed: '' })
 
       let idx = 0
       const tick = () => {
-        // Check if skip was triggered
         if (skipTypingRef.current) {
-          setItems((prev) =>
-            prev.map((item) =>
-              item.kind === 'typing' && item.key === typingKey
-                ? { ...item, displayed: text }
-                : item,
-            ),
-          )
+          // Skip to end instantly
+          setTypingState({ text, displayed: text })
           setIsTyping(false)
-          currentTypingRef.current = null
+          typingTimerRef.current = null
           onDone(text)
           return
         }
-        
         idx++
-        setItems((prev) =>
-          prev.map((item) =>
-            item.kind === 'typing' && item.key === typingKey
-              ? { ...item, displayed: text.slice(0, idx) }
-              : item,
-          ),
-        )
+        setTypingState({ text, displayed: text.slice(0, idx) })
         if (idx < text.length) {
-          setTimeout(tick, 30)
+          typingTimerRef.current = setTimeout(tick, 30)
         } else {
           setIsTyping(false)
-          currentTypingRef.current = null
+          typingTimerRef.current = null
           onDone(text)
         }
       }
-      setTimeout(tick, 30)
+      typingTimerRef.current = setTimeout(tick, 30)
     },
     [],
   )
 
-  // Replace the typing item with a real message, then append follow-up UI
+  // Called when typing animation finishes: clear typingState and commit result to items
   const finalizeTyping = useCallback(
     (fullText: string, section: Section | null) => {
+      setTypingState(null)
       const msgId = nextId()
-      setItems((prev) => {
-        const withoutTyping = prev.filter((i) => i.kind !== 'typing')
-        const newMessage: MessageItem = {
-          kind: 'message',
-          key: msgId,
-          data: {
-            id: msgId,
-            type: 'system',
-            content: section !== null ? getResponse(section) : fullText,
-          },
-        }
-        if (section === 'contact') {
-          return [
-            ...withoutTyping,
-            newMessage,
-            { kind: 'contact-btn', key: nextId() },
-            {
-              kind: 'options',
-              options: FOLLOW_UP_OPTIONS,
-              key: nextId(),
-            },
-          ]
-        }
-        if (section !== null) {
-          return [
-            ...withoutTyping,
-            newMessage,
-            {
-              kind: 'options',
-              options: FOLLOW_UP_OPTIONS,
-              key: nextId(),
-            },
-          ]
-        }
-        // Welcome message – show main menu
-        return [
-          ...withoutTyping,
-          newMessage,
-          { kind: 'options', options: MAIN_OPTIONS, key: nextId() },
-        ]
-      })
+      const content = section !== null ? getResponse(section) : fullText
+      const newMessage: MessageItem = { kind: 'message', key: msgId, data: { id: msgId, type: 'system', content } }
+      if (section === 'contact') {
+        setItems((prev) => [...prev, newMessage, { kind: 'contact-btn', key: nextId() }, { kind: 'options', options: FOLLOW_UP_OPTIONS, key: nextId() }])
+      } else if (section !== null) {
+        setItems((prev) => [...prev, newMessage, { kind: 'options', options: FOLLOW_UP_OPTIONS, key: nextId() }])
+      } else {
+        // Welcome message — show main menu
+        setItems((prev) => [...prev, newMessage, { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
+      }
     },
     [],
   )
 
-  // Boot: if a saved session exists, show a quick restoring sequence, otherwise show welcome
+  // Show folder or root content with typing animation
+  const showContent = useCallback((key: string) => {
+    // Defer past the current event so any in-progress click/keydown events
+    // have fully resolved before typing starts (prevents skip-on-click-start race)
+    setTimeout(() => {
+      if (key === 'root') {
+        typeMessage(WELCOME_MESSAGE, (full) => {
+          finalizeTyping(full, null)
+        }, true)
+      } else {
+        const entries = NAV_TREE[key] || []
+        const options = entries.map((e: any) => ({ label: e.label, section: e.id }))
+        options.unshift({ label: '.. Back', section: '__back' })
+        const folderMessage = FOLDER_MESSAGES[key] || `Contents of ${key}`
+        typeMessage(folderMessage, () => {
+          setTypingState(null)
+          const msgId = nextId()
+          setItems((prev) => [
+            ...prev,
+            { kind: 'message', key: msgId, data: { id: msgId, type: 'system', content: folderMessage } },
+            { kind: 'options', options, key: nextId() },
+          ])
+        }, true)
+      }
+    }, 0)
+  }, [typeMessage, finalizeTyping])
+
+  // Boot + reopen: populate items when terminal becomes open (once per open/close cycle)
   useEffect(() => {
     if (!hasLoaded) return
+    if (!isOpen) {
+      bootedRef.current = false // reset so next open re-runs
+      return
+    }
+    if (bootedRef.current) return
+    bootedRef.current = true
 
-    // If items already exist, nothing to do
-    if (items.length > 0) return
+    // Determine which path to use — saved path on first load, current navPath after that
+    const activePath = savedNavPathRef.current ?? navPath
+    if (savedNavPathRef.current) {
+      setNavPath(savedNavPathRef.current)
+      savedNavPathRef.current = null // consume so it only applies once
+    }
 
-    // If we have a saved session, show a short 'Restoring session...' typing animation
-    if (sessionActions.length > 0 && reconstructedRef.current) {
+    const key = activePath.length <= 1 ? 'root' : activePath.slice(1).join('/')
+
+    if (key === 'root') {
       const t = setTimeout(() => {
-        // ensure the typing message appears by itself
-        setItems([])
-        typeMessage('Restoring session...', () => {
-          setItems(reconstructedRef.current || [])
+        typeMessage(WELCOME_MESSAGE, (full) => {
+          finalizeTyping(full, null)
         })
-      }, 150)
+      }, 400)
       return () => clearTimeout(t)
+    } else {
+      showContent(key)
     }
-
-    // No saved session — show the normal welcome message
-    const t = setTimeout(() => {
-      typeMessage(WELCOME_MESSAGE, (full) => {
-        finalizeTyping(full, null)
-        setSessionActions([{ type: 'welcome' }])
-      })
-    }, 400)
-    return () => clearTimeout(t)
-  }, [hasLoaded, items.length, sessionActions.length, typeMessage, finalizeTyping])
-
-  // When reopening the terminal (from closed state), show restoring animation then restore
-  useEffect(() => {
-    if (!hasLoaded) return
-    if (isOpen && reconstructedRef.current) {
-      // clear visible items so the restoring typing appears alone
-      setItems([])
-      // show restoring typing, then apply reconstructed items
-      typeMessage('Restoring session...', () => {
-        setItems(reconstructedRef.current || [])
-      })
-    }
-  }, [isOpen, hasLoaded, typeMessage])
+  // navPath intentionally excluded — activePath handles the saved vs current logic
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, hasLoaded, typeMessage, finalizeTyping, showContent])
 
   const handleSelect = useCallback(
     (section: string | undefined, label: string) => {
@@ -506,42 +420,16 @@ export default function Terminal() {
       // Track with GoatCounter (use label if section undefined)
       window.goatcounter?.count({ path: 'nav-' + (section ?? label) })
 
-      // If we are navigating (or choosing from main menu), handle directory logic
-      const entriesAtRoot = NAV_TREE.root.map((e: any) => e.id)
-
       // If the selected section corresponds to a folder in NAV_TREE, navigate into it
       const targetKey = section ?? label
 
-      // Helper to append a user message before showing folder contents
-      const pushUserAndShow = (userText: string, cb: () => void) => {
-        const userMsgId = nextId()
-        const userMsg: ConversationItem = {
-          kind: 'message',
-          key: userMsgId,
-          data: { id: userMsgId, type: 'user', content: userText },
-        }
-        setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), userMsg])
-        setTimeout(cb, 200)
-      }
-
       // If user clicked Back
       if (section === '__back') {
-        setNavPath((p) => {
-          if (p.length <= 1) return p
-          const next = p.slice(0, p.length - 1)
-          const key = next.length <= 1 ? 'root' : next.slice(1).join('/')
-          const entries = NAV_TREE[key] || []
-          const options = entries
-            .filter((e: any) => e.id !== lastOpenedFileId)
-            .map((e: any) => ({ label: e.label, section: e.id }))
-          if (key === 'root') {
-            setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
-          } else {
-            if (key !== 'root') options.unshift({ label: '.. Back', section: '__back' })
-            setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options, key: nextId() }])
-          }
-          return next
-        })
+        const next = navPath.length <= 1 ? navPath : navPath.slice(0, navPath.length - 1)
+        const key = next.length <= 1 ? 'root' : next.slice(1).join('/')
+        setNavPath(next)
+        setLastOpenedFileId(null)
+        showContent(key)
         return
       }
 
@@ -555,14 +443,13 @@ export default function Terminal() {
         const newKey = resolvedTarget
         setLastOpenedFileId(null)
         setNavPath((p) => [...p, newKey])
-        pushUserAndShow(label, () => {
-          const entries = NAV_TREE[newKey] || []
-          const options = entries
-            .filter((e: any) => e.id !== lastOpenedFileId)
-            .map((e: any) => ({ label: e.label, section: e.id }))
-          if (newKey !== 'root') options.unshift({ label: '.. Back', section: '__back' })
-          setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options, key: nextId() }])
-        })
+        
+        // Clear messages and show folder welcome
+        const entries = NAV_TREE[newKey] || []
+        const options = entries.map((e: any) => ({ label: e.label, section: e.id }))
+        if (newKey !== 'root') options.unshift({ label: '.. Back', section: '__back' })
+        
+        showContent(newKey)
         return
       }
 
@@ -575,14 +462,13 @@ export default function Terminal() {
           const newKey = key === 'root' ? match.id : key + '/' + match.id
           setLastOpenedFileId(null)
           setNavPath((p) => [...p, match.id])
-          pushUserAndShow(label, () => {
-            const entries2 = NAV_TREE[newKey] || []
-            const options2 = entries2
-              .filter((e: any) => e.id !== lastOpenedFileId)
-              .map((e: any) => ({ label: e.label, section: e.id }))
-            if (newKey !== 'root') options2.unshift({ label: '.. Back', section: '__back' })
-            setItems((prev) => [...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'), { kind: 'options', options: options2, key: nextId() }])
-          })
+          
+          // Clear messages and show folder welcome
+          const entries2 = NAV_TREE[newKey] || []
+          const options2 = entries2.map((e: any) => ({ label: e.label, section: e.id }))
+          if (newKey !== 'root') options2.unshift({ label: '.. Back', section: '__back' })
+          
+          showContent(newKey)
           return
         }
         if (match.type === 'file') {
@@ -649,17 +535,68 @@ export default function Terminal() {
         const text = typingTexts[section ?? label] ?? typingTexts['about']
         typeMessage(text, () => {
           finalizeTyping('', section ?? (label as any))
-          setSessionActions((prev) => [...prev, { type: 'select', section: section ?? label, label }])
         })
       }, 200)
     },
-    [isTyping, typeMessage, finalizeTyping, navPath],
+    [isTyping, typeMessage, finalizeTyping, navPath, showContent],
   )
 
   const handleContactOpen = useCallback(() => {
     window.goatcounter?.count({ path: 'nav-contact-form' })
     window.formbricks?.track('contact_form_opened')
   }, [])
+
+  // Handle clicking on a breadcrumb segment
+  const handleBreadcrumbClick = useCallback((index: number) => {
+    const newPath = navPath.slice(0, index + 1)
+    const key = newPath.length <= 1 ? 'root' : newPath.slice(1).join('/')
+    setNavPath(newPath)
+    setLastOpenedFileId(null)
+    showContent(key)
+  }, [navPath, showContent])
+  const handleToggleTree = useCallback(() => {
+    setIsTreeExpanded((prev) => !prev)
+  }, [])
+
+  // Handle toggling a folder in the tree
+  const handleToggleFolder = useCallback((folderId: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) {
+        next.delete(folderId)
+      } else {
+        next.add(folderId)
+      }
+      return next
+    })
+  }, [])
+
+  // Handle clicking on a folder in the tree
+  const handleTreeFolderClick = useCallback((folderId: string) => {
+    // folderId is like "experience" or "projects/OpenMetrics"
+    // Convert to navPath: ['~', 'experience'] or ['~', 'projects', 'OpenMetrics']
+    const parts = folderId.split('/')
+    const newPath = ['~', ...parts]
+    const key = folderId
+    
+    setNavPath(newPath)
+    setLastOpenedFileId(null)
+    showContent(key)
+  }, [showContent])
+
+  // Build truncated breadcrumb for mobile: show ~ then ... then last 2 segments if > 2 folders
+  const getTruncatedBreadcrumbs = () => {
+    if (!navPath || navPath.length <= 2) {
+      return navPath.map((seg, idx) => ({ seg, fullIdx: idx }))
+    }
+    // If more than 2 segments, show first (root) + ellipsis + last 2
+    return [
+      { seg: navPath[0], fullIdx: 0 },
+      { seg: '...', fullIdx: -1 }, // -1 for ellipsis
+      { seg: navPath[navPath.length - 2], fullIdx: navPath.length - 2 },
+      { seg: navPath[navPath.length - 1], fullIdx: navPath.length - 1 },
+    ]
+  }
 
   return (
     <>
@@ -685,7 +622,40 @@ export default function Terminal() {
         <div className={`terminal ${isMaximized ? 'terminal--maximized' : ''}`}>
       <div className="terminal__header">
         <span className="terminal__title">dlgelencser.dev</span>
-        <div className="terminal__breadcrumb">{navPath.join(' / ')}</div>
+        <div className="terminal__breadcrumb">
+          {getTruncatedBreadcrumbs().map((item, idx) => {
+            const truncated = getTruncatedBreadcrumbs()
+            return (
+              <span key={idx}>
+                {item.seg === '...' ? (
+                  // Ellipsis is clickable to jump to root
+                  <button
+                    type="button"
+                    className="terminal__crumb terminal__crumb-ellipsis"
+                    onClick={() => handleBreadcrumbClick(0)}
+                    title="Jump to root"
+                  >
+                    ...
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="terminal__crumb"
+                    onClick={() => {
+                      if (item.fullIdx >= 0) {
+                        handleBreadcrumbClick(item.fullIdx)
+                      }
+                    }}
+                    aria-current={idx === truncated.length - 1 ? 'true' : undefined}
+                  >
+                    {item.seg}
+                  </button>
+                )}
+                {idx < truncated.length - 1 && <span className="terminal__crumb-sep"> / </span>}
+              </span>
+            )
+          })}
+        </div>
         <div className="terminal__controls">
           {isMaximized ? (
             // When maximized: show Restore (left) and Close (right)
@@ -731,22 +701,53 @@ export default function Terminal() {
         </div>
       </div>
 
+      <div className="terminal__nav">
+        <pre className="terminal__nav-box">
+          <div className="terminal__nav-box-content">
+            {!isTreeExpanded ? (
+              <ExpandableBreadcrumb
+                navPath={navPath}
+                isTreeExpanded={isTreeExpanded}
+                onToggleTree={handleToggleTree}
+                onBreadcrumbClick={handleBreadcrumbClick}
+              />
+            ) : (
+              <div className="terminal__nav-tree-view">
+                <div className="terminal__nav-tree-root">
+                  <button
+                    className="breadcrumb__toggle"
+                    onClick={handleToggleTree}
+                    title="Collapse tree"
+                    aria-expanded={isTreeExpanded}
+                  >
+                    v
+                  </button>
+                  <button
+                    className={`breadcrumb__segment ${navPath.length === 1 ? 'breadcrumb__segment--current' : ''}`}
+                    onClick={() => handleBreadcrumbClick(0)}
+                    title="Navigate to ~"
+                    aria-current={navPath.length === 1 ? 'location' : undefined}
+                  >
+                    ~
+                  </button>
+                </div>
+                <FolderTree
+                  navTree={NAV_TREE}
+                  currentPath={navPath}
+                  expandedFolders={expandedFolders}
+                  onToggleFolder={handleToggleFolder}
+                  onFolderClick={handleTreeFolderClick}
+                />
+              </div>
+            )}
+          </div>
+        </pre>
+      </div>
+
       <div className="terminal__body">
         {items.map((item) => {
           if (item.kind === 'message') {
             return <Message key={item.key} message={item.data} />
-          }
-
-          if (item.kind === 'typing') {
-            return (
-              <div key={item.key} className="message message--system">
-                <span className="message__prefix">&gt; </span>
-                <span className="message__content">
-                  {item.displayed}
-                  <span className="cursor">▋</span>
-                </span>
-              </div>
-            )
           }
 
           if (item.kind === 'contact-btn') {
@@ -769,6 +770,15 @@ export default function Terminal() {
 
           return null
         })}
+        {typingState && (
+          <div className="message message--system">
+            <span className="message__prefix">&gt;_ </span>
+            <span className="message__content">
+              {typingState.displayed}
+              <span className="cursor">▋</span>
+            </span>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
         </div>
