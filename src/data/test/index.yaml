@@ -1,0 +1,5 @@
+name: "test"
+parent: "~"
+message: "This is a test folder"
+folders: []
+files: []

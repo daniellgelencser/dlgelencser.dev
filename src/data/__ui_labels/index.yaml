@@ -1,0 +1,21 @@
+name: "__ui_labels"
+parent: null
+message: "UI labels"
+folders: []
+files: []
+uiLabels:
+  back: ".. Back"
+  openContactForm: "Open Contact Form"
+  terminalOpenLabel: "Console"
+  terminalTitle: "dlgelencser.dev"
+  treeCollapse: "Collapse tree"
+  treeExpand: "Expand tree"
+  navigateTo: "Navigate to"
+  navigateToRoot: "Navigate to ~"
+  restore: "Restore"
+  maximize: "Maximize"
+  close: "Close"
+  collapse: "Collapse"
+  expand: "Expand"
+  openedPrefix: "Opened"
+  contentsPrefix: "Contents of"

@@ -24,6 +24,12 @@
   word-break: break-word;
 }
 
+.message__filename {
+  display: block;
+  color: #3fb950;
+  margin-bottom: 2px;
+}
+
 .message--system .message__prefix,
 .message--system .message__content {
   color: #58a6ff;

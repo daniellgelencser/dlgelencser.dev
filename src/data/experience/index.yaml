@@ -1,6 +1,15 @@
 name: "experience"
 parent: "~"
 message: "Here's my professional work experience. Select a company to learn more."
+uiOptions:
+  - section: "featured"
+    target: "TechCorp"
+    label: "⭐ Featured Role"
+    kind: "folder"
+  - section: "all_startup"
+    target: "StartupX"
+    label: "Startup Journey"
+    kind: "folder"
 folders:
   - TechCorp
   - StartupX

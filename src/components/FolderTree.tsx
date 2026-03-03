@@ -1,4 +1,5 @@
 import './FolderTree.css'
+import { UI_LABELS } from '../data/navData'
 
 interface NAVEntry {
   id: string
@@ -66,7 +67,7 @@ function TreeNode({
           <button
             className="tree-node__toggle"
             onClick={() => onToggleFolder(navKey)}
-            title={isExpanded ? 'Collapse' : 'Expand'}
+            title={isExpanded ? UI_LABELS.collapse : UI_LABELS.expand}
             aria-expanded={isExpanded}
           >
             {isExpanded ? 'v' : '>'}
@@ -77,7 +78,7 @@ function TreeNode({
         <button
           className={`tree-node__label${isCurrent ? ' tree-node__label--current' : isAncestor ? ' tree-node__label--ancestor' : ''}`}
           onClick={() => onFolderClick(navKey)}
-          title={`Navigate to ${folderLabel}`}
+          title={`${UI_LABELS.navigateTo} ${folderLabel}`}
           aria-current={isCurrent ? 'location' : undefined}
         >
           {folderLabel.replace(/\/$/, '')}

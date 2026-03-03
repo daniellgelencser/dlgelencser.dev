@@ -24,48 +24,116 @@ export interface FileEntry {
 
 export interface FolderYaml {
   name: string
+  label?: string
   parent: string | null
   message: string
   folders: string[]
   files: FileEntry[]
+  uiOptions?: UiOption[]
+  uiLabels?: UiLabels
+}
+
+export interface UiOption {
+  label?: string
+  section: string
+  target: string
+  kind?: UiOptionKind
+}
+
+export type UiOptionKind = 'file' | 'folder' | 'link'
+
+export interface UiLabels {
+  back: string
+  openContactForm: string
+  terminalOpenLabel: string
+  terminalTitle: string
+  treeCollapse: string
+  treeExpand: string
+  navigateTo: string
+  navigateToRoot: string
+  restore: string
+  maximize: string
+  close: string
+  collapse: string
+  expand: string
+  openedPrefix: string
+  contentsPrefix: string
 }
 
 // ── Import all YAML files eagerly ─────────────────────────────────────────
 
-// Instead of using import.meta.glob, we manually import each YAML file
-// This ensures the custom yamlPlugin can transform them correctly
 import rootYaml from './index.yaml'
-import experienceYaml from './experience/index.yaml'
-import experienceTechCorpYaml from './experience/TechCorp/index.yaml'
-import experienceStartupXYaml from './experience/StartupX/index.yaml'
-import experienceDevHouseYaml from './experience/DevHouse/index.yaml'
-import projectsYaml from './projects/index.yaml'
-import projectsOpenMetricsYaml from './projects/OpenMetrics/index.yaml'
-import projectsFlowKitYaml from './projects/FlowKit/index.yaml'
-import projectsNotiflyYaml from './projects/Notifly/index.yaml'
-import stackYaml from './stack/index.yaml'
-import stackLanguagesYaml from './stack/languages/index.yaml'
-import stackInfrastructureYaml from './stack/infrastructure/index.yaml'
-import stackFrontendYaml from './stack/frontend/index.yaml'
-import extracurricularYaml from './extracurricular/index.yaml'
-import extracurricularHobbiesYaml from './extracurricular/hobbies/index.yaml'
+import uiLabelsYaml from './__ui_labels/index.yaml'
 
-const yamlModules: Record<string, FolderYaml> = {
-  '/src/data/index.yaml': rootYaml as FolderYaml,
-  '/src/data/experience/index.yaml': experienceYaml as FolderYaml,
-  '/src/data/experience/TechCorp/index.yaml': experienceTechCorpYaml as FolderYaml,
-  '/src/data/experience/StartupX/index.yaml': experienceStartupXYaml as FolderYaml,
-  '/src/data/experience/DevHouse/index.yaml': experienceDevHouseYaml as FolderYaml,
-  '/src/data/projects/index.yaml': projectsYaml as FolderYaml,
-  '/src/data/projects/OpenMetrics/index.yaml': projectsOpenMetricsYaml as FolderYaml,
-  '/src/data/projects/FlowKit/index.yaml': projectsFlowKitYaml as FolderYaml,
-  '/src/data/projects/Notifly/index.yaml': projectsNotiflyYaml as FolderYaml,
-  '/src/data/stack/index.yaml': stackYaml as FolderYaml,
-  '/src/data/stack/languages/index.yaml': stackLanguagesYaml as FolderYaml,
-  '/src/data/stack/infrastructure/index.yaml': stackInfrastructureYaml as FolderYaml,
-  '/src/data/stack/frontend/index.yaml': stackFrontendYaml as FolderYaml,
-  '/src/data/extracurricular/index.yaml': extracurricularYaml as FolderYaml,
-  '/src/data/extracurricular/hobbies/index.yaml': extracurricularHobbiesYaml as FolderYaml,
+const ROOT_YAML_PATH = '/src/data/index.yaml'
+const UI_LABELS_YAML_PATH = '/src/data/__ui_labels/index.yaml'
+
+const discoveredYamlModules = (import.meta as any).glob('./**/index.yaml', {
+  eager: true,
+  import: 'default',
+}) as Record<string, unknown>
+
+function isFileEntry(value: unknown): value is FileEntry {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.label === 'string' &&
+    (candidate.type === 'file' ||
+      candidate.type === 'folder' ||
+      candidate.type === 'exec' ||
+      candidate.type === 'popup')
+  )
+}
+
+function isUiOption(value: unknown): value is UiOption {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  return (
+    (candidate.label === undefined || typeof candidate.label === 'string') &&
+    typeof candidate.section === 'string' &&
+    typeof candidate.target === 'string' &&
+    (candidate.kind === undefined || candidate.kind === 'file' || candidate.kind === 'folder' || candidate.kind === 'link')
+  )
+}
+
+function isFolderYaml(value: unknown): value is FolderYaml {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Record<string, unknown>
+  if (typeof candidate.name !== 'string') return false
+  if (!(candidate.label === undefined || typeof candidate.label === 'string')) return false
+  if (!(candidate.parent === null || typeof candidate.parent === 'string')) return false
+  if (typeof candidate.message !== 'string') return false
+  if (!Array.isArray(candidate.folders) || !candidate.folders.every((folder) => typeof folder === 'string')) return false
+  if (!Array.isArray(candidate.files) || !candidate.files.every(isFileEntry)) return false
+  if (candidate.uiOptions !== undefined && (!Array.isArray(candidate.uiOptions) || !candidate.uiOptions.every(isUiOption))) return false
+  return true
+}
+
+function toAbsoluteDataPath(relativePath: string): string {
+  return `/src/data/${relativePath.replace(/^\.\//, '')}`
+}
+
+const yamlModules: Record<string, FolderYaml> = {}
+
+if (isFolderYaml(rootYaml)) {
+  yamlModules[ROOT_YAML_PATH] = rootYaml
+}
+
+if (isFolderYaml(uiLabelsYaml)) {
+  yamlModules[UI_LABELS_YAML_PATH] = uiLabelsYaml
+}
+
+for (const [relativePath, raw] of Object.entries(discoveredYamlModules)) {
+  if (relativePath === './index.yaml' || relativePath === './__ui_labels/index.yaml') {
+    continue
+  }
+
+  if (!isFolderYaml(raw)) {
+    continue
+  }
+
+  yamlModules[toAbsoluteDataPath(relativePath)] = raw
 }
 
 
@@ -89,12 +157,47 @@ function pathToNavKey(filePath: string): string {
 
 export type NavTree = Record<string, FileEntry[]>
 export type FolderMessages = Record<string, string>
+export type FolderUiOptions = Record<string, Array<{ label: string; section: string }>>
+export type FolderUiMap = Record<string, Record<string, string>>
+export type FolderUiKindMap = Record<string, Record<string, UiOptionKind>>
+
+function navKeyToYamlPath(navKey: string): string {
+  return navKey === 'root'
+    ? ROOT_YAML_PATH
+    : `/src/data/${navKey}/index.yaml`
+}
+
+function folderDisplayLabel(yaml: FolderYaml | undefined, fallbackId: string): string {
+  return yaml?.label ?? yaml?.name ?? fallbackId
+}
+
+const defaultUiLabels: UiLabels = {
+  back: '.. Back',
+  openContactForm: 'Open Contact Form',
+  terminalOpenLabel: 'Console',
+  terminalTitle: 'dlgelencser.dev',
+  treeCollapse: 'Collapse tree',
+  treeExpand: 'Expand tree',
+  navigateTo: 'Navigate to',
+  navigateToRoot: 'Navigate to ~',
+  restore: 'Restore',
+  maximize: 'Maximize',
+  close: 'Close',
+  collapse: 'Collapse',
+  expand: 'Expand',
+  openedPrefix: 'Opened',
+  contentsPrefix: 'Contents of',
+}
 
 function buildNavData(): { navTree: NavTree; folderMessages: FolderMessages } {
   const navTree: NavTree = {}
   const folderMessages: FolderMessages = {}
 
   for (const [filePath, yaml] of Object.entries(yamlModules)) {
+    if (filePath === UI_LABELS_YAML_PATH) {
+      continue
+    }
+
     if (!yaml) {
       console.warn('YAML module is null/undefined:', filePath)
       continue
@@ -106,11 +209,17 @@ function buildNavData(): { navTree: NavTree; folderMessages: FolderMessages } {
 
     // Build the entries array for this folder:
     // 1. Child folders first (in declared order)
-    const folderEntries: FileEntry[] = (yaml.folders ?? []).map((id) => ({
-      id,
-      label: `${id}/`,
-      type: 'folder' as const,
-    }))
+    const folderEntries: FileEntry[] = (yaml.folders ?? []).map((id) => {
+      const childNavKey = navKey === 'root' ? id : `${navKey}/${id}`
+      const childYaml = yamlModules[navKeyToYamlPath(childNavKey)]
+      const displayLabel = folderDisplayLabel(childYaml, id)
+
+      return {
+        id,
+        label: `${displayLabel}/`,
+        type: 'folder' as const,
+      }
+    })
 
     // 2. Then files/exec/popup entries
     const fileEntries: FileEntry[] = (yaml.files ?? []).map((f) => ({
@@ -129,9 +238,114 @@ function buildNavData(): { navTree: NavTree; folderMessages: FolderMessages } {
 
 const { navTree: NAV_TREE, folderMessages: FOLDER_MESSAGES } = buildNavData()
 
+const rootConfig = yamlModules[ROOT_YAML_PATH]
+
+function resolveTargetLabel(target: string): string {
+  const folderYaml = yamlModules[navKeyToYamlPath(target)]
+  if (folderYaml) {
+    return folderDisplayLabel(folderYaml, target)
+  }
+
+  const rootFile = rootConfig?.files.find((file) => file.id === target)
+  if (rootFile) {
+    return rootFile.label
+  }
+
+  return target
+}
+
+function resolveTargetLabelInFolder(navKey: string, target: string): string {
+  const localMatch = NAV_TREE[navKey]?.find((entry) => entry.id === target)
+  if (localMatch) {
+    return localMatch.label.replace(/\/$/, '')
+  }
+  return resolveTargetLabel(target)
+}
+
+function inferUiOptionKind(navKey: string, target: string): UiOptionKind {
+  if (/^https?:\/\//i.test(target)) {
+    return 'link'
+  }
+
+  if (NAV_TREE[target]) {
+    return 'folder'
+  }
+
+  const localFolderNavKey = navKey === 'root' ? target : `${navKey}/${target}`
+  if (NAV_TREE[localFolderNavKey]) {
+    return 'folder'
+  }
+
+  return 'file'
+}
+
+function withKindMarker(label: string, kind: UiOptionKind): string {
+  if (kind === 'folder') {
+    return label.endsWith('/') ? label : `${label}/`
+  }
+
+  if (kind === 'link') {
+    return label.endsWith('↗') ? label : `${label} ↗`
+  }
+
+  return label
+}
+
+function buildFolderUiConfig(): { folderUiOptions: FolderUiOptions; folderUiMap: FolderUiMap; folderUiKindMap: FolderUiKindMap } {
+  const folderUiOptions: FolderUiOptions = {}
+  const folderUiMap: FolderUiMap = {}
+  const folderUiKindMap: FolderUiKindMap = {}
+
+  for (const [filePath, yaml] of Object.entries(yamlModules)) {
+    if (filePath === UI_LABELS_YAML_PATH) continue
+
+    const navKey = pathToNavKey(filePath)
+    const options = yaml.uiOptions ?? []
+    if (options.length === 0) continue
+
+    folderUiMap[navKey] = {}
+    folderUiKindMap[navKey] = {}
+    folderUiOptions[navKey] = options.map((option) => {
+      const kind = option.kind ?? inferUiOptionKind(navKey, option.target)
+      folderUiMap[navKey][option.section] = option.target
+      folderUiKindMap[navKey][option.section] = kind
+
+      const baseLabel = option.label ?? resolveTargetLabelInFolder(navKey, option.target)
+      return {
+        label: withKindMarker(baseLabel, kind),
+        section: option.section,
+      }
+    })
+  }
+
+  return { folderUiOptions, folderUiMap, folderUiKindMap }
+}
+
+const { folderUiOptions: FOLDER_UI_OPTIONS, folderUiMap: FOLDER_UI_MAP, folderUiKindMap: FOLDER_UI_KIND_MAP } = buildFolderUiConfig()
+
+export const MAIN_OPTIONS: Array<{ label: string; section: string }> =
+  FOLDER_UI_OPTIONS.root ??
+  (rootConfig?.uiOptions ?? []).map((option) => ({
+    label: option.label ?? resolveTargetLabel(option.target),
+    section: option.section,
+  }))
+
+export const ROOT_MAP: Record<string, string> =
+  FOLDER_UI_MAP.root ??
+  (rootConfig?.uiOptions ?? []).reduce<Record<string, string>>((acc, option) => {
+    acc[option.section] = option.target
+    return acc
+  }, {})
+
+export const UI_LABELS: UiLabels = {
+  ...defaultUiLabels,
+  ...(yamlModules[UI_LABELS_YAML_PATH]?.uiLabels ?? {}),
+}
+
 export { NAV_TREE, FOLDER_MESSAGES }
+export { FOLDER_UI_OPTIONS, FOLDER_UI_MAP, FOLDER_UI_KIND_MAP }
 
 // The root welcome message (used directly by Terminal for the boot animation)
 export const WELCOME_MESSAGE: string =
-  yamlModules['/src/data/index.yaml']?.message ??
+  yamlModules[ROOT_YAML_PATH]?.message ??
   "Hello! I'm Daniel Gelencser, a software engineer. What would you like to know?"

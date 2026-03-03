@@ -3,7 +3,7 @@ import Message, { MessageData } from './Message'
 import OptionButtons, { Section } from './OptionButtons'
 import ExpandableBreadcrumb from './ExpandableBreadcrumb'
 import FolderTree from './FolderTree'
-import { NAV_TREE, FOLDER_MESSAGES, WELCOME_MESSAGE } from '../data/navData'
+import { NAV_TREE, FOLDER_MESSAGES, WELCOME_MESSAGE, MAIN_OPTIONS, ROOT_MAP, UI_LABELS, FOLDER_UI_OPTIONS, FOLDER_UI_MAP, FOLDER_UI_KIND_MAP } from '../data/navData'
 import './Terminal.css'
 
 // Extend window for optional third-party globals
@@ -13,18 +13,6 @@ declare global {
     formbricks?: { track: (event: string) => void }
   }
 }
-
-const MAIN_OPTIONS = [
-  { label: 'About Me', section: 'about' as Section },
-  { label: 'Experience', section: 'experience' as Section },
-  { label: 'Projects', section: 'projects' as Section },
-  { label: 'Stack', section: 'stack' as Section },
-  { label: 'Extracurricular', section: 'extracurricular' as Section },
-  { label: 'Contact', section: 'contact' as Section },
-]
-
-const FOLLOW_UP_OPTIONS = MAIN_OPTIONS
-
 
 let messageCounter = 0
 function nextId() {
@@ -100,16 +88,6 @@ export default function Terminal() {
   const currentNavKey = () => {
     if (!navPath || navPath.length <= 1) return 'root'
     return navPath.slice(1).join('/')
-  }
-
-  // Map symbolic MAIN_OPTIONS sections to NAV ids (files/folders)
-  const ROOT_MAP: Record<string, string> = {
-    about: 'bio.txt',
-    experience: 'experience',
-    projects: 'projects',
-    stack: 'stack',
-    extracurricular: 'extracurricular',
-    contact: 'contact.sh',
   }
 
   // Load session from sessionStorage on mount
@@ -210,9 +188,9 @@ export default function Terminal() {
       const msgId = nextId()
       const newMessage: MessageItem = { kind: 'message', key: msgId, data: { id: msgId, type: 'system', content: fullText } }
       if (section === 'contact') {
-        setItems((prev) => [...prev, newMessage, { kind: 'contact-btn', key: nextId() }, { kind: 'options', options: FOLLOW_UP_OPTIONS, key: nextId() }])
+        setItems((prev) => [...prev, newMessage, { kind: 'contact-btn', key: nextId() }, { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
       } else if (section !== null) {
-        setItems((prev) => [...prev, newMessage, { kind: 'options', options: FOLLOW_UP_OPTIONS, key: nextId() }])
+        setItems((prev) => [...prev, newMessage, { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
       } else {
         // Welcome message — show main menu
         setItems((prev) => [...prev, newMessage, { kind: 'options', options: MAIN_OPTIONS, key: nextId() }])
@@ -232,9 +210,12 @@ export default function Terminal() {
         }, true)
       } else {
         const entries = NAV_TREE[key] || []
-        const options = entries.map((e: any) => ({ label: e.label, section: e.id }))
-        options.unshift({ label: '.. Back', section: '__back' })
-        const folderMessage = FOLDER_MESSAGES[key] || `Contents of ${key}`
+        const configuredOptions = FOLDER_UI_OPTIONS[key]
+        const options = configuredOptions
+          ? configuredOptions.map((option) => ({ label: option.label, section: option.section }))
+          : entries.map((e: any) => ({ label: e.label, section: e.id }))
+        options.unshift({ label: UI_LABELS.back, section: '__back' })
+        const folderMessage = FOLDER_MESSAGES[key] || `${UI_LABELS.contentsPrefix} ${key}`
         typeMessage(folderMessage, () => {
           setTypingState(null)
           const msgId = nextId()
@@ -301,9 +282,19 @@ export default function Terminal() {
         return
       }
 
-      // Resolve symbolic root mappings (About Me -> bio.txt, Contact -> contact.sh)
+      const key = currentNavKey()
+
+      // Resolve section mapping for current folder scope
       let resolvedTarget = targetKey
-      if (section && ROOT_MAP[section]) resolvedTarget = ROOT_MAP[section]
+      const scopedMap = key === 'root' ? ROOT_MAP : (FOLDER_UI_MAP[key] ?? {})
+      const scopedKindMap = FOLDER_UI_KIND_MAP[key] ?? {}
+      if (section && scopedMap[section]) resolvedTarget = scopedMap[section]
+      const resolvedKind = section ? scopedKindMap[section] : undefined
+
+      if (resolvedKind === 'link' && resolvedTarget) {
+        window.open(resolvedTarget, '_blank', 'noopener,noreferrer')
+        return
+      }
 
       // If selecting a root folder (experience, projects, stack, extracurricular)
       if (resolvedTarget && NAV_TREE[resolvedTarget]) {
@@ -314,17 +305,19 @@ export default function Terminal() {
         
         // Clear messages and show folder welcome
         const entries = NAV_TREE[newKey] || []
-        const options = entries.map((e: any) => ({ label: e.label, section: e.id }))
-        if (newKey !== 'root') options.unshift({ label: '.. Back', section: '__back' })
+        const configuredOptions = FOLDER_UI_OPTIONS[newKey]
+        const options = configuredOptions
+          ? configuredOptions.map((option) => ({ label: option.label, section: option.section }))
+          : entries.map((e: any) => ({ label: e.label, section: e.id }))
+        if (newKey !== 'root') options.unshift({ label: UI_LABELS.back, section: '__back' })
         
         showContent(newKey)
         return
       }
 
       // If selecting an entry inside a folder
-      const key = currentNavKey()
       const entries = NAV_TREE[key] || []
-      const match = entries.find((e: any) => e.id === section || e.label === label)
+      const match = entries.find((e: any) => e.id === resolvedTarget || e.id === section || e.label === label)
       if (match) {
         if (match.type === 'folder') {
           const newKey = key === 'root' ? match.id : key + '/' + match.id
@@ -333,15 +326,23 @@ export default function Terminal() {
           
           // Clear messages and show folder welcome
           const entries2 = NAV_TREE[newKey] || []
-          const options2 = entries2.map((e: any) => ({ label: e.label, section: e.id }))
-          if (newKey !== 'root') options2.unshift({ label: '.. Back', section: '__back' })
+          const configuredOptions2 = FOLDER_UI_OPTIONS[newKey]
+          const options2 = configuredOptions2
+            ? configuredOptions2.map((option) => ({ label: option.label, section: option.section }))
+            : entries2.map((e: any) => ({ label: e.label, section: e.id }))
+          if (newKey !== 'root') options2.unshift({ label: UI_LABELS.back, section: '__back' })
           
           showContent(newKey)
           return
         }
         if (match.type === 'file') {
           // show file contents as a system message
-          const msgId = nextId()
+          const filenameMsgId = nextId()
+          const contentMsgId = nextId()
+          const rawFilename = (label || match.label)
+            .replace(/\s*↗$/, '')
+            .replace(/\/$/, '')
+          const filenameToken = rawFilename.replace(/\s+/g, '_')
           // remember opened file to hide it from the options
           setLastOpenedFileId(match.id)
           const currentKey2 = key
@@ -349,11 +350,12 @@ export default function Terminal() {
           const optionsAfterFile = entriesForOptions
             .filter((e: any) => e.id !== match.id)
             .map((e: any) => ({ label: e.label, section: e.id }))
-          if (currentKey2 !== 'root') optionsAfterFile.unshift({ label: '.. Back', section: '__back' })
+          if (currentKey2 !== 'root') optionsAfterFile.unshift({ label: UI_LABELS.back, section: '__back' })
 
           setItems((prev) => [
             ...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'),
-            { kind: 'message', key: msgId, data: { id: msgId, type: 'system', content: match.content } },
+            { kind: 'message', key: filenameMsgId, data: { id: filenameMsgId, type: 'user', content: filenameToken } },
+            { kind: 'message', key: contentMsgId, data: { id: contentMsgId, type: 'system', content: match.content } },
             { kind: 'options', key: nextId(), options: optionsAfterFile },
           ])
           return
@@ -369,7 +371,7 @@ export default function Terminal() {
             const mid = nextId()
             setItems((prev) => [
               ...prev.filter((i) => i.kind !== 'options' && i.kind !== 'contact-btn'),
-              { kind: 'message', key: mid, data: { id: mid, type: 'system', content: `(Opened ${match.label})` } },
+              { kind: 'message', key: mid, data: { id: mid, type: 'system', content: `(${UI_LABELS.openedPrefix} ${match.label})` } },
             ])
           })
           return
@@ -444,20 +446,6 @@ export default function Terminal() {
     showContent(key)
   }, [showContent])
 
-  // Build truncated breadcrumb for mobile: show ~ then ... then last 2 segments if > 2 folders
-  const getTruncatedBreadcrumbs = () => {
-    if (!navPath || navPath.length <= 2) {
-      return navPath.map((seg, idx) => ({ seg, fullIdx: idx }))
-    }
-    // If more than 2 segments, show first (root) + ellipsis + last 2
-    return [
-      { seg: navPath[0], fullIdx: 0 },
-      { seg: '...', fullIdx: -1 }, // -1 for ellipsis
-      { seg: navPath[navPath.length - 2], fullIdx: navPath.length - 2 },
-      { seg: navPath[navPath.length - 1], fullIdx: navPath.length - 1 },
-    ]
-  }
-
   return (
     <>
       {!isOpen && (
@@ -473,7 +461,7 @@ export default function Terminal() {
                 <line x1="13" y1="20" x2="22" y2="20" stroke="#58a6ff" strokeWidth="2.6" strokeLinecap="round" />
               </svg>
             </span>
-            <span className="terminal-open-label">Console</span>
+            <span className="terminal-open-label">{UI_LABELS.terminalOpenLabel}</span>
           </button>
         </div>
       )}
@@ -481,7 +469,7 @@ export default function Terminal() {
       {isOpen && (
         <div className={`terminal ${isMaximized ? 'terminal--maximized' : ''}`}>
       <div className="terminal__header">
-        <span className="terminal__title">dlgelencser.dev</span>
+        <span className="terminal__title">{UI_LABELS.terminalTitle}</span>
         {/* <div className="terminal__breadcrumb">
           {getTruncatedBreadcrumbs().map((item, idx) => {
             const truncated = getTruncatedBreadcrumbs()
@@ -522,17 +510,17 @@ export default function Terminal() {
             <>
               <button
                 className="terminal__control terminal__control--max"
-                title="Restore"
+                title={UI_LABELS.restore}
                 onClick={() => setIsMaximized(false)}
-                aria-label="Restore"
+                aria-label={UI_LABELS.restore}
               >
                 <span className="control__icon">🗗</span>
               </button>
               <button
                 className="terminal__control terminal__control--close"
-                title="Close"
+                title={UI_LABELS.close}
                 onClick={() => setIsOpen(false)}
-                aria-label="Close"
+                aria-label={UI_LABELS.close}
               >
                 <span className="control__icon">✕</span>
               </button>
@@ -542,17 +530,17 @@ export default function Terminal() {
             <>
               <button
                 className="terminal__control terminal__control--max"
-                title="Maximize"
+                title={UI_LABELS.maximize}
                 onClick={() => setIsMaximized(true)}
-                aria-label="Maximize"
+                aria-label={UI_LABELS.maximize}
               >
                 <span className="control__icon">🗖</span>
               </button>
               <button
                 className="terminal__control terminal__control--close"
-                title="Close"
+                title={UI_LABELS.close}
                 onClick={() => { setIsOpen(false); setItems([]) }}
-                aria-label="Close"
+                aria-label={UI_LABELS.close}
               >
                 <span className="control__icon">✕</span>
               </button>
@@ -577,7 +565,7 @@ export default function Terminal() {
                   <button
                     className="breadcrumb__toggle"
                     onClick={handleToggleTree}
-                    title="Collapse tree"
+                    title={UI_LABELS.treeCollapse}
                     aria-expanded={isTreeExpanded}
                   >
                     v
@@ -585,7 +573,7 @@ export default function Terminal() {
                   <button
                     className={`breadcrumb__segment ${navPath.length === 1 ? 'breadcrumb__segment--current' : 'tree-node__label--ancestor'}`}
                     onClick={() => handleBreadcrumbClick(0)}
-                    title="Navigate to ~"
+                    title={UI_LABELS.navigateToRoot}
                     aria-current={navPath.length === 1 ? 'location' : undefined}
                   >
                     ~
@@ -614,7 +602,7 @@ export default function Terminal() {
             return (
               <div key={item.key} className="contact-btn-wrap">
                 <button className="contact-open-btn" onClick={handleContactOpen}>
-                  Open Contact Form
+                  {UI_LABELS.openContactForm}
                 </button>
               </div>
             )

@@ -1,4 +1,5 @@
 import './ExpandableBreadcrumb.css'
+import { UI_LABELS } from '../data/navData'
 
 interface ExpandableBreadcrumbProps {
   navPath: string[]
@@ -19,7 +20,7 @@ export default function ExpandableBreadcrumb({
         <button
           className="breadcrumb__toggle"
           onClick={onToggleTree}
-          title={isTreeExpanded ? 'Collapse tree' : 'Expand tree'}
+          title={isTreeExpanded ? UI_LABELS.treeCollapse : UI_LABELS.treeExpand}
           aria-expanded={isTreeExpanded}
         >
           {isTreeExpanded ? 'v' : '>'}
@@ -31,7 +32,7 @@ export default function ExpandableBreadcrumb({
               <button
                 className={`breadcrumb__segment ${idx === navPath.length - 1 ? 'breadcrumb__segment--current' : ''}`}
                 onClick={() => onBreadcrumbClick(idx)}
-                title={`Navigate to ${segment}`}
+                title={`${UI_LABELS.navigateTo} ${segment}`}
                 aria-current={idx === navPath.length - 1 ? 'location' : undefined}
               >
                 {segment}

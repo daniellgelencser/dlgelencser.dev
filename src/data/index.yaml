@@ -1,11 +1,38 @@
 name: "~"
+label: "Home"
 parent: null
 message: "Hello! I'm Daniel Gelencser, a software engineer. What would you like to know?"
+uiOptions:
+  - label: "About Me"
+    section: "about"
+    target: "bio.txt"
+    kind: "file"
+  - label: "Experience"
+    section: "experience"
+    target: "experience"
+    kind: "folder"
+  - label: "Projects"
+    section: "projects"
+    target: "projects"
+    kind: "folder"
+  - label: "Stack"
+    section: "stack"
+    target: "stack"
+    kind: "folder"
+  - label: "Extracurricular"
+    section: "extracurricular"
+    target: "extracurricular"
+    kind: "folder"
+  - label: "Contact"
+    section: "contact"
+    target: "contact.sh"
+    kind: "file"
 folders:
   - experience
   - projects
   - stack
   - extracurricular
+  - test
 files:
   - id: bio.txt
     label: "bio.txt"
