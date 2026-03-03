@@ -1,0 +1,13 @@
+name: "DevHouse"
+parent: "experience"
+message: "DevHouse (2018–2020) — Started my career building web applications."
+folders: []
+files:
+  - id: summary.md
+    label: "summary.md"
+    type: file
+    content: "Junior Software Engineer @ DevHouse (2018–2020) — Developed and maintained full-stack web applications."
+  - id: projects.md
+    label: "projects.md"
+    type: file
+    content: "- Internal CRM rebuild in React + Django\n- CI/CD pipeline setup with GitHub Actions"

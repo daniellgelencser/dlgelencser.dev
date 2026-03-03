@@ -1,0 +1,13 @@
+name: "hobbies"
+parent: "extracurricular"
+message: "Personal hobbies and creative pursuits."
+folders: []
+files:
+  - id: photography.jpg
+    label: "photography.jpg"
+    type: popup
+    popupId: photos
+  - id: gaming.txt
+    label: "gaming.txt"
+    type: file
+    content: "I enjoy indie game jams and tinkering with small game projects."

@@ -1,0 +1,10 @@
+name: "extracurricular"
+parent: "~"
+message: "Beyond work — my interests and philosophy."
+folders:
+  - hobbies
+files:
+  - id: philosophy.txt
+    label: "philosophy.txt"
+    type: file
+    content: "I believe in clean code, gradual improvement, and mentoring teams."

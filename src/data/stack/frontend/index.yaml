@@ -1,0 +1,9 @@
+name: "frontend"
+parent: "stack"
+message: "Frontend frameworks and libraries."
+folders: []
+files:
+  - id: overview.md
+    label: "overview.md"
+    type: file
+    content: "React · TypeScript · Vite · React Flow · Tailwind CSS"

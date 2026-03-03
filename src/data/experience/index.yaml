@@ -1,0 +1,8 @@
+name: "experience"
+parent: "~"
+message: "Here's my professional work experience. Select a company to learn more."
+folders:
+  - TechCorp
+  - StartupX
+  - DevHouse
+files: []

@@ -1,0 +1,16 @@
+name: "~"
+parent: null
+message: "Hello! I'm Daniel Gelencser, a software engineer. What would you like to know?"
+folders:
+  - experience
+  - projects
+  - stack
+  - extracurricular
+files:
+  - id: bio.txt
+    label: "bio.txt"
+    type: file
+    content: "Hello — I'm Daniel Gelencser. I'm a software engineer who builds web and cloud products. I enjoy systems design, developer experience, and mentoring teams."
+  - id: contact.sh
+    label: "contact.sh"
+    type: exec

@@ -1,0 +1,17 @@
+name: "OpenMetrics"
+parent: "projects"
+message: "OpenMetrics — A lightweight observability dashboard."
+folders: []
+files:
+  - id: readme.md
+    label: "readme.md"
+    type: file
+    content: "OpenMetrics — a lightweight observability dashboard built with React and Go."
+  - id: architecture.png
+    label: "architecture.png"
+    type: popup
+    popupId: openmetrics-arch
+  - id: full-breakdown.md
+    label: "full-breakdown.md"
+    type: popup
+    popupId: openmetrics-full

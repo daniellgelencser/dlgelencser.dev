@@ -1,0 +1,8 @@
+name: "projects"
+parent: "~"
+message: "Here are some key projects I've worked on. Select one to see details."
+folders:
+  - OpenMetrics
+  - FlowKit
+  - Notifly
+files: []
