@@ -65,6 +65,10 @@
   font-weight: 400;
 }
 
+.tree-node__label--ancestor {
+  color: #58a6ff;
+}
+
 .tree-node__children {
   margin: 0;
 }

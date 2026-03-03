@@ -554,6 +554,24 @@ export default function Terminal() {
     setLastOpenedFileId(null)
     showContent(key)
   }, [navPath, showContent])
+  // Compute the set of folder navKeys that are ancestors of the current path.
+  // e.g. navPath=['~','experience','TechCorp'] → ['experience', 'experience/TechCorp']
+  const getAncestorKeys = useCallback((path: string[]): Set<string> => {
+    const keys = new Set<string>()
+    if (path.length <= 1) return keys
+    const segments = path.slice(1) // drop '~'
+    for (let i = 1; i <= segments.length; i++) {
+      keys.add(segments.slice(0, i).join('/'))
+    }
+    return keys
+  }, [])
+
+  // Whenever navPath changes, set expanded folders to exactly the ancestor chain —
+  // this collapses any folders that are no longer in the current path
+  useEffect(() => {
+    setExpandedFolders(getAncestorKeys(navPath))
+  }, [navPath, getAncestorKeys])
+
   const handleToggleTree = useCallback(() => {
     setIsTreeExpanded((prev) => !prev)
   }, [])
@@ -622,7 +640,7 @@ export default function Terminal() {
         <div className={`terminal ${isMaximized ? 'terminal--maximized' : ''}`}>
       <div className="terminal__header">
         <span className="terminal__title">dlgelencser.dev</span>
-        <div className="terminal__breadcrumb">
+        {/* <div className="terminal__breadcrumb">
           {getTruncatedBreadcrumbs().map((item, idx) => {
             const truncated = getTruncatedBreadcrumbs()
             return (
@@ -655,7 +673,7 @@ export default function Terminal() {
               </span>
             )
           })}
-        </div>
+        </div> */}
         <div className="terminal__controls">
           {isMaximized ? (
             // When maximized: show Restore (left) and Close (right)
@@ -723,7 +741,7 @@ export default function Terminal() {
                     v
                   </button>
                   <button
-                    className={`breadcrumb__segment ${navPath.length === 1 ? 'breadcrumb__segment--current' : ''}`}
+                    className={`breadcrumb__segment ${navPath.length === 1 ? 'breadcrumb__segment--current' : 'tree-node__label--ancestor'}`}
                     onClick={() => handleBreadcrumbClick(0)}
                     title="Navigate to ~"
                     aria-current={navPath.length === 1 ? 'location' : undefined}

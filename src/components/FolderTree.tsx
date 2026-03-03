@@ -50,6 +50,11 @@ function TreeNode({
 }: TreeNodeProps) {
   const currentNavKey = getNavKey(currentPath)
   const isCurrent = navKey === currentNavKey
+  // A node is an ancestor if the current path starts with this navKey
+  const isAncestor = !isCurrent && (
+    currentNavKey === navKey ||
+    currentNavKey.startsWith(navKey + '/')
+  )
   const isExpanded = expandedFolders.has(navKey)
   const childFolders = getFoldersAtKey(navTree, navKey)
   const hasChildren = childFolders.length > 0
@@ -70,7 +75,7 @@ function TreeNode({
           <span className="tree-node__toggle tree-node__toggle--placeholder" />
         )}
         <button
-          className={`tree-node__label ${isCurrent ? 'tree-node__label--current' : ''}`}
+          className={`tree-node__label${isCurrent ? ' tree-node__label--current' : isAncestor ? ' tree-node__label--ancestor' : ''}`}
           onClick={() => onFolderClick(navKey)}
           title={`Navigate to ${folderLabel}`}
           aria-current={isCurrent ? 'location' : undefined}
