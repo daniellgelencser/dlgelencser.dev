@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dlgelencser.dev/sitemap.xml
+Sitemap: https://dlgelencser.dev/sitemap.xml/sitemap.xml
