@@ -1,7 +1,7 @@
 name: "~"
 label: "Home"
 parent: null
-message: "Welcome to my online résumé! I'm Daniel Gelencser, a Cloud Native Software Engineer. What would you like to know?"
+message: "Welcome to my online resume! I'm Daniel Gelencser, a Cloud Native Software Engineer. What would you like to know?"
 uiOptions:
   - label: "About Me"
     section: "about"
