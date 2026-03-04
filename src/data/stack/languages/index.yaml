@@ -1,9 +1,0 @@
-name: "languages"
-parent: "stack"
-message: "Programming languages I work with."
-folders: []
-files:
-  - id: overview.md
-    label: "overview.md"
-    type: file
-    content: "TypeScript · Go · Python · Rust (learning)"

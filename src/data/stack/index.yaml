@@ -1,8 +1,0 @@
-name: "stack"
-parent: "~"
-message: "My technical stack and tools. Explore by category."
-folders:
-  - languages
-  - infrastructure
-  - frontend
-files: []

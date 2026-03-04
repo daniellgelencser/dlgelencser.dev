@@ -5,39 +5,53 @@ message: "Hello! I'm Daniel Gelencser, a software engineer. What would you like 
 uiOptions:
   - label: "About Me"
     section: "about"
-    target: "bio.txt"
+    target: "about_me.txt"
     kind: "file"
-  - label: "Experience"
+  - label: "Credentials"
+    section: "credentials"
+    target: "credentials.txt"
+    kind: "file"
+  - label: "Skills"
+    section: "skills"
+    target: "skills.txt"
+    kind: "file"
+  - label: "Interests"
+    section: "interests"
+    target: "interests.txt"
+    kind: "file"
+  - label: "Contact"
+    section: "contact"
+    target: "contact.txt"
+    kind: "file"
+  - label: "Experience/"
     section: "experience"
     target: "experience"
     kind: "folder"
-  - label: "Projects"
-    section: "projects"
-    target: "projects"
+  - label: "Education/"
+    section: "education"
+    target: "education"
     kind: "folder"
-  - label: "Stack"
-    section: "stack"
-    target: "stack"
-    kind: "folder"
-  - label: "Extracurricular"
-    section: "extracurricular"
-    target: "extracurricular"
-    kind: "folder"
-  - label: "Contact"
-    section: "contact"
-    target: "contact.sh"
-    kind: "file"
 folders:
   - experience
-  - projects
-  - stack
-  - extracurricular
-  - test
+  - education
 files:
-  - id: bio.txt
-    label: "bio.txt"
+  - id: about_me.txt
+    label: "about_me.txt"
     type: file
-    content: "Hello — I'm Daniel Gelencser. I'm a software engineer who builds web and cloud products. I enjoy systems design, developer experience, and mentoring teams."
-  - id: contact.sh
-    label: "contact.sh"
-    type: exec
+    content: "Daniel Lorant Gelencser\nSoftware Engineer & Cloud Developer\nHillegom, The Netherlands\n\nAiming to enhance my expertise across Programming, DevOps Engineering, Cloud Infrastructure, Software Architecture, and Project Management. I have designed and implemented robust software systems including cloud-native architectures for NGOs, logistics platforms for energy companies, zero-touch DevOps systems for pharmaceutical projects, large-scale data processing platforms for news agencies, and IoT systems for construction equipment and beverage manufacturers.\n\nI have led complex projects, mentored new talents, and contributed to innovation by integrating modern cloud and microservice technologies into practical solutions. My career strategy focuses on broad foundational knowledge while achieving deep expertise in Software Development, Microservices, Cloud Computing, and Data Processing."
+  - id: credentials.txt
+    label: "credentials.txt"
+    type: file
+    content: "MICROSOFT CERTIFIED: Azure Developer Associate (AZ-204)\n2024 | The Netherlands\n\nScope: Develop Azure compute solutions • Develop for Azure storage • Implement Azure security • Monitor, troubleshoot, and optimize Azure solutions • Connect to and consume Azure services and third-party services\n\nVerify: https://learn.microsoft.com/api/credentials/share/en-us/DanielGelencser-7802/A988874E423BC318?sharingId=A9A7DB93C9BC5681"
+  - id: skills.txt
+    label: "skills.txt"
+    type: file
+    content: "CORE SKILLS\n───────────────────────────────────────\nCloud-Native Applications\nServerless Architecture\nMicroservices\nBackend Development\nAgile Methodologies\n\nTECHNOLOGIES & TOOLS\n───────────────────────────────────────\nCloud:      Azure • AWS • GCP\nLanguages:  C# / .NET • Java • Python • JavaScript • PHP • Go • C/C++\nInfra:      Bicep • Ansible • Dapr • Docker • CI/CD (Azure DevOps)\nData:       SQL • NoSQL • Redis\nOther:      Git • Linux/Bash • Jira • New Relic • Scrum/Agile"
+  - id: interests.txt
+    label: "interests.txt"
+    type: file
+    content: "Outside of work you'll find me:\n\n🎾  Playing Squash\n🥾  Hiking\n✈️  Travelling\n🐧  Tinkering with Linux\n🎸  Playing Guitar\n🎺  Playing Trumpet\n🎲  Playing Board Games"
+  - id: contact.txt
+    label: "contact.txt"
+    type: file
+    content: "Daniel Lorant Gelencser\n\nEmail:    mailto:daniel@dlgelencser.dev\nPhone:    +31 6871 18623\nLinkedIn: https://www.linkedin.com/in/daniel-l-gelencser/\nGitHub:   https://github.com/daniellgelencser\nLocation: Amsterdam Area, The Netherlands"

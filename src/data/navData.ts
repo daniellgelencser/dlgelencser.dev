@@ -68,7 +68,7 @@ import uiLabelsYaml from './__ui_labels/index.yaml'
 const ROOT_YAML_PATH = '/src/data/index.yaml'
 const UI_LABELS_YAML_PATH = '/src/data/__ui_labels/index.yaml'
 
-const discoveredYamlModules = (import.meta as any).glob('./**/index.yaml', {
+const discoveredYamlModules = (import.meta as any).glob('./**/*.yaml', {
   eager: true,
   import: 'default',
 }) as Record<string, unknown>

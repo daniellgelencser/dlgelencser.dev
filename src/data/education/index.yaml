@@ -1,0 +1,23 @@
+name: "education"
+label: "Education"
+parent: "~"
+message: "Here's my academic background. Select a degree to learn more."
+uiOptions:
+  - label: "Computer Science MSc - Leiden University"
+    section: "msc"
+    target: "msc_leiden.txt"
+    kind: "file"
+  - label: "Software Engineering BSc - Queen Mary University of London"
+    section: "bsc"
+    target: "bsc_qmul.txt"
+    kind: "file"
+folders: []
+files:
+  - id: msc_leiden.txt
+    label: "msc_leiden.txt"
+    type: file
+    content: "MSc Computer Science: Advanced Computing and Systems\n2021 – 2023 | Leiden University, The Netherlands\n\nModules: Distributed Systems • High-Performance Computing • Embedded Systems • Cloud Computing • Security Engineering\n\nLanguages & Tools: Python • C/C++ • Java • Go • GCP"
+  - id: bsc_qmul.txt
+    label: "bsc_qmul.txt"
+    type: file
+    content: "BSc Hons. Software Engineering for Business — First Class Honours\n2016 – 2020 | Queen Mary University of London, United Kingdom\n\nModules: Computer Architecture • Software Development • Project Management • Cloud Computing • Embedded Systems\n\nLanguages & Tools: Java • PHP • C/C++ • JavaScript • React • AWS"

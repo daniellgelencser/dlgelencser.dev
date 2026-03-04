@@ -24,6 +24,17 @@
   word-break: break-word;
 }
 
+.message__link {
+  color: #58a6ff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.message__link:hover {
+  color: #79c0ff;
+}
+
 .message__filename {
   display: block;
   color: #3fb950;

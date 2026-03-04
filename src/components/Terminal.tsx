@@ -80,7 +80,6 @@ export default function Terminal() {
   const [navPath, setNavPath] = useState<string[]>(['~'])
   const [isTreeExpanded, setIsTreeExpanded] = useState(false)
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
-  const [, setLastOpenedFileId] = useState<string | null>(null)
   const skipTypingRef = useRef(false)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -282,7 +281,6 @@ export default function Terminal() {
         const next = navPath.length <= 1 ? navPath : navPath.slice(0, navPath.length - 1)
         const key = next.length <= 1 ? 'root' : next.slice(1).join('/')
         setNavPath(next)
-        setLastOpenedFileId(null)
         showContent(key)
         return
       }
@@ -305,7 +303,6 @@ export default function Terminal() {
       if (resolvedTarget && NAV_TREE[resolvedTarget]) {
         // navigate into folder
         const newKey = resolvedTarget
-        setLastOpenedFileId(null)
         setNavPath((p) => [...p, newKey])
         
         // Clear messages and show folder welcome
@@ -326,7 +323,6 @@ export default function Terminal() {
       if (match) {
         if (match.type === 'folder') {
           const newKey = key === 'root' ? match.id : key + '/' + match.id
-          setLastOpenedFileId(null)
           setNavPath((p) => [...p, match.id])
           
           // Clear messages and show folder welcome
@@ -348,13 +344,12 @@ export default function Terminal() {
             .replace(/\s*↗$/, '')
             .replace(/\/$/, '')
           const filenameToken = rawFilename.replace(/\s+/g, '_')
-          // remember opened file to hide it from the options
-          setLastOpenedFileId(match.id)
           const currentKey2 = key
-          const entriesForOptions = NAV_TREE[currentKey2] || []
-          const optionsAfterFile = entriesForOptions
-            .filter((e: any) => e.id !== match.id)
-            .map((e: any) => ({ label: e.label, section: e.id }))
+          const configuredAfterFile = FOLDER_UI_OPTIONS[currentKey2]
+          const optionsAfterFile = configuredAfterFile
+            ? [...configuredAfterFile]
+            : (NAV_TREE[currentKey2] || [])
+                .map((e: any) => ({ label: e.label, section: e.id }))
           if (currentKey2 !== 'root') optionsAfterFile.unshift({ label: UI_LABELS.back, section: '__back' })
 
           setItems((prev) => [
@@ -405,7 +400,6 @@ export default function Terminal() {
     const newPath = navPath.slice(0, index + 1)
     const key = newPath.length <= 1 ? 'root' : newPath.slice(1).join('/')
     setNavPath(newPath)
-    setLastOpenedFileId(null)
     showContent(key)
   }, [navPath, showContent, isTreeExpanded])
   // Compute the set of folder navKeys that are ancestors of the current path.
@@ -454,7 +448,6 @@ export default function Terminal() {
     // Collapse tree view
     setIsTreeExpanded(false)
     setNavPath(newPath)
-    setLastOpenedFileId(null)
     showContent(key)
   }, [showContent])
 
