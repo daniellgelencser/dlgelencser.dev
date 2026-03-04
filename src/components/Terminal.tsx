@@ -266,6 +266,11 @@ export default function Terminal() {
     (section: string | undefined, label: string) => {
       if (isTyping) return
 
+      // Collapse tree view if it's open
+      if (isTreeExpanded) {
+        setIsTreeExpanded(false)
+      }
+
       // Track with GoatCounter (use label if section undefined)
       window.goatcounter?.count({ path: 'nav-' + (section ?? label) })
 
@@ -392,12 +397,17 @@ export default function Terminal() {
 
   // Handle clicking on a breadcrumb segment
   const handleBreadcrumbClick = useCallback((index: number) => {
+    // Collapse tree view if it's open
+    if (isTreeExpanded) {
+      setIsTreeExpanded(false)
+    }
+
     const newPath = navPath.slice(0, index + 1)
     const key = newPath.length <= 1 ? 'root' : newPath.slice(1).join('/')
     setNavPath(newPath)
     setLastOpenedFileId(null)
     showContent(key)
-  }, [navPath, showContent])
+  }, [navPath, showContent, isTreeExpanded])
   // Compute the set of folder navKeys that are ancestors of the current path.
   // e.g. navPath=['~','experience','TechCorp'] → ['experience', 'experience/TechCorp']
   const getAncestorKeys = useCallback((path: string[]): Set<string> => {
@@ -441,6 +451,8 @@ export default function Terminal() {
     const newPath = ['~', ...parts]
     const key = folderId
     
+    // Collapse tree view
+    setIsTreeExpanded(false)
     setNavPath(newPath)
     setLastOpenedFileId(null)
     showContent(key)
