@@ -1,7 +1,7 @@
 name: "~"
 label: "Home"
 parent: null
-message: "Hello! I'm Daniel Gelencser, a software engineer. What would you like to know?"
+message: "Welcome to my online résumé! I'm Daniel Gelencser, a Cloud Native Software Engineer. What would you like to know?"
 uiOptions:
   - label: "About Me"
     section: "about"
@@ -38,7 +38,7 @@ files:
   - id: about_me.txt
     label: "about_me.txt"
     type: file
-    content: "Daniel Lorant Gelencser\nSoftware Engineer & Cloud Developer\nHillegom, The Netherlands\n\nAiming to enhance my expertise across Programming, DevOps Engineering, Cloud Infrastructure, Software Architecture, and Project Management. I have designed and implemented robust software systems including cloud-native architectures for NGOs, logistics platforms for energy companies, zero-touch DevOps systems for pharmaceutical projects, large-scale data processing platforms for news agencies, and IoT systems for construction equipment and beverage manufacturers.\n\nI have led complex projects, mentored new talents, and contributed to innovation by integrating modern cloud and microservice technologies into practical solutions. My career strategy focuses on broad foundational knowledge while achieving deep expertise in Software Development, Microservices, Cloud Computing, and Data Processing."
+    content: "Daniel Lorant Gelencser | Cloud Native Software Engineer\n\nWith over 7 years of experience, I build cloud native applications that solve complex problems across industries, from IoT for construction to automated DevOps for Pharma and logistics for Energy.\n\nI treat infrastructure and software as a single cohesive system rather than separate layers. By owning the full development lifecycle, I build cloud native solutions that take advantage of automation and distributed architecture to deliver systems that stay resilient and cost effective as they scale.\n\nBeyond the code, I work closely with clients to refine their ideas into clear requirements and user stories, ensuring that the technical implementation delivers genuine value from the start."
   - id: credentials.txt
     label: "credentials.txt"
     type: file
