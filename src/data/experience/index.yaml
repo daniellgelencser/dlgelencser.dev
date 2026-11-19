@@ -3,7 +3,7 @@ label: "Experience"
 parent: "~"
 message: "Here's my professional work experience. Select a role to learn more."
 uiOptions:
-  - label: "Cloud Software Engineering Consultant - Nordcloud (an IBM Company)"
+  - label: "Senior Cloud Software Engineering Consultant - IBM Nordcloud"
     section: "nordcloud"
     target: "nordcloud.txt"
     kind: "file"
