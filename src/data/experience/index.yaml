@@ -3,7 +3,7 @@ label: "Experience"
 parent: "~"
 message: "Here's my professional work experience. Select a role to learn more."
 uiOptions:
-  - label: "Senior Cloud Software Engineering Consultant - IBM Nordcloud"
+  - label: "Senior Cloud Software Engineer | Consultant - IBM Nordcloud"
     section: "nordcloud"
     target: "nordcloud.txt"
     kind: "file"
@@ -28,7 +28,7 @@ files:
   - id: nordcloud.txt
     label: "nordcloud.txt"
     type: file
-    content: "Senior Cloud Software Engineering Consultant — IBM Nordcloud\n2024 – Present | Amsterdam, The Netherlands\n\n• Designed and implemented cloud-native architectures, helping organisations migrate and modernise applications across Azure and AWS, ensuring systems are scalable, reliable, and secure.\n• Contributed to the design and development of a donor information system for a major NGO, keeping data relevant, secure, and synchronised across multiple platforms.\n• Developed a logistics tracking system for a major energy company, monitoring deliveries via trucks and ferries.\n• Involved in the development of a zero-touch DevOps automation system for a pharmaceutical company, enabling secure management of project creation across multiple cloud platforms.\n• Contributed to a comprehensive data processing platform for a leading news agency, enabling reliable handling of large-scale information flows.\n• Maintained infrastructure as code, automated deployments through CI/CD pipelines, and provided guidance on practical implementation and best practices.\n\nStack: Azure • AWS • .NET/C# • Java • Dapr • Bicep • Ansible • Azure DevOps • Serverless Functions • NoSQL • SLES • Linux/Bash • Agile/Scrum • Integration/Unit Testing"
+    content: "Senior Cloud Software Engineer | Consultant — IBM Nordcloud\n2024 – Present | Amsterdam, The Netherlands\n\n• Designed and implemented cloud-native architectures, helping organisations migrate and modernise applications across Azure and AWS, ensuring systems are scalable, reliable, and secure.\n• Contributed to the design and development of a donor information system for a major NGO, keeping data relevant, secure, and synchronised across multiple platforms.\n• Developed a logistics tracking system for a major energy company, monitoring deliveries via trucks and ferries.\n• Involved in the development of a zero-touch DevOps automation system for a pharmaceutical company, enabling secure management of project creation across multiple cloud platforms.\n• Contributed to a comprehensive data processing platform for a leading news agency, enabling reliable handling of large-scale information flows.\n• Maintained infrastructure as code, automated deployments through CI/CD pipelines, and provided guidance on practical implementation and best practices.\n\nStack: Azure • AWS • .NET/C# • Java • Dapr • Bicep • Ansible • Azure DevOps • Serverless Functions • NoSQL • SLES • Linux/Bash • Agile/Scrum • Integration/Unit Testing"
   - id: evalan.txt
     label: "evalan.txt"
     type: file
